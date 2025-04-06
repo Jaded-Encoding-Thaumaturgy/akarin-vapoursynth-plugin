@@ -87,7 +87,7 @@ if use_asmjit
 else
   sources = sources_common + sources_expr2
   incdir += include_directories('expr2/reactor')
-  deps += dependency('llvm', version: ['>= 10.0', '< 20'], method: 'config-tool', static: get_option('static-llvm'),
+  deps += dependency('llvm', version: ['>= 10.0', '< 21'], method: 'config-tool', static: get_option('static-llvm'),
     modules: [
       'asmprinter', 'executionengine', 'target', 'orcjit', 'native',
     ])
