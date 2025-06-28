@@ -13,20 +13,20 @@ stdenv.mkDerivation (finalAttrs: {
   version = "0.0.0";
 
   src = lib.fileset.toSource {
-    root = ../.;
-    fileset = lib.fileset.intersection (lib.fileset.fromSource (lib.sources.cleanSource ../.)) (
+    root = ./.;
+    fileset = lib.fileset.intersection (lib.fileset.fromSource (lib.sources.cleanSource ./.)) (
       lib.fileset.unions [
-        ../banding
-        ../expr
-        ../expr2
-        ../ngx
-        ../text
-        ../vfx
-        ../meson_options.txt
-        ../meson.build
-        ../plugin.cpp
-        ../plugin.h
-        ../version.h.in
+        ./banding
+        ./expr
+        ./expr2
+        ./ngx
+        ./text
+        ./vfx
+        ./meson_options.txt
+        ./meson.build
+        ./plugin.cpp
+        ./plugin.h
+        ./version.h.in
       ]
     );
   };
