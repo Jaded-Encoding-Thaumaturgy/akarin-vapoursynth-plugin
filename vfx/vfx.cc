@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -7,8 +8,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "VapourSynth.h"
-#include "VSHelper.h"
+#include "VapourSynth4.h"
+#include "VSHelper4.h"
 
 #ifndef _WIN32
 #error "Unsupported platform"
@@ -42,7 +43,7 @@ struct VfxData {
 
     int num_streams;
 
-    VSNodeRef *node;
+    VSNode *node;
     VSVideoInfo vi;
     double scale;
     double strength;
@@ -80,13 +81,8 @@ struct VfxData {
     }
 };
 
-static void VS_CC vfxInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    VfxData *d = static_cast<VfxData *>(*instanceData);
-    vsapi->setVideoInfo(&d->vi, 1, node);
-}
-
-static const VSFrameRef *VS_CC vfxGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    VfxData *ds = static_cast<VfxData *>(*instanceData);
+static const VSFrame *VS_CC vfxGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    VfxData *ds = static_cast<VfxData *>(instanceData);
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, ds->node, frameCtx);
@@ -100,14 +96,17 @@ static const VSFrameRef *VS_CC vfxGetFrame(int n, int activationReason, void **i
                 lock.lock();
             }
 
-            const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+            const VSFrame *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-            const VSFormat *fi = vsapi->registerFormat(cmRGB, d->output_depth == 32 ? stFloat : stInteger, d->output_depth, 0, 0, core);
+            // TODO: can be refactored out to function creation.
+            VSVideoFormat fi;
+            vsapi->queryVideoFormat(&fi, cfRGB, d->output_depth == 32 ? stFloat : stInteger, d->output_depth, 0, 0, core);
+
             assert(vsapi->getFrameHeight(src, 0) == (int)d->in_image_height());
             assert(vsapi->getFrameWidth(src, 0) == (int)d->in_image_width());
             int planes[3] = { 0, 1, 2 };
-            const VSFrameRef *srcf[3] = { nullptr, nullptr, nullptr };
-            VSFrameRef *dst = vsapi->newVideoFrame2(fi, d->out_image_width(), d->out_image_height(), srcf, planes, src, core);
+            const VSFrame *srcf[3] = { nullptr, nullptr, nullptr };
+            VSFrame *dst = vsapi->newVideoFrame2(&fi, d->out_image_width(), d->out_image_height(), srcf, planes, src, core);
 
             auto host = static_cast<char*>(d->srcCpuBuf);
             for (int plane = 0; plane < 3; plane++) {
@@ -115,7 +114,7 @@ static const VSFrameRef *VS_CC vfxGetFrame(int n, int activationReason, void **i
                 const auto *ptr = vsapi->getReadPtr(src, plane);
                 const size_t w = d->in_image_width(), h = d->in_image_height();
                 const auto pitch = d->srcTmpImg.pitch;
-                vs_bitblt(host + pitch * h * plane, pitch, ptr, stride, w * d->vi.format->bytesPerSample, h);
+                vsh::bitblt(host + pitch * h * plane, pitch, ptr, stride, w * d->vi.format.bytesPerSample, h);
             }
 
             {
@@ -126,7 +125,7 @@ static const VSFrameRef *VS_CC vfxGetFrame(int n, int activationReason, void **i
                 mcp2d.dstMemoryType = CU_MEMORYTYPE_DEVICE;
                 mcp2d.dstDevice = (CUdeviceptr)d->srcTmpImg.pixels;
                 mcp2d.dstPitch = (size_t)d->srcTmpImg.pitch;
-                mcp2d.WidthInBytes = (size_t)d->in_image_width() * d->vi.format->bytesPerSample;
+                mcp2d.WidthInBytes = (size_t)d->in_image_width() * d->vi.format.bytesPerSample;
                 mcp2d.Height = d->in_image_height() * 3;
                 CK_CUDA(cuMemcpy2DAsync_v2(&mcp2d, d->stream));
             }
@@ -156,7 +155,7 @@ static const VSFrameRef *VS_CC vfxGetFrame(int n, int activationReason, void **i
                 auto *ptr = vsapi->getWritePtr(dst, plane);
                 const size_t w = d->out_image_width(), h = d->out_image_height();
                 const auto pitch = d->dstTmpImg.pitch;
-                vs_bitblt(ptr, stride, host + pitch * h * plane, pitch, w * d->output_depth / 8, h);
+                vsh::bitblt(ptr, stride, host + pitch * h * plane, pitch, w * d->output_depth / 8, h);
             }
 
             vsapi->freeFrame(src);
@@ -181,11 +180,11 @@ static void VS_CC vfxFree(void *instanceData, VSCore *core, const VSAPI *vsapi) 
 static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
     unsigned int version = 0;
     if (NvVFX_GetVersion(&version) != NVCV_SUCCESS) {
-            vsapi->setError(out, "DLVFX: unable to load NvVFX.");
+            vsapi->mapSetError(out, "DLVFX: unable to load NvVFX.");
             return;
     }
     int err;
-    auto num_streams = int64ToIntS(vsapi->propGetInt(in, "num_streams", 0, &err));
+    auto num_streams = vsh::int64ToIntS(vsapi->mapGetInt(in, "num_streams", 0, &err));
     if (err) num_streams = 1;
 
     std::unique_ptr<VfxData[]> ds(new VfxData[num_streams]);
@@ -209,16 +208,16 @@ static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
                 }
                 throw std::runtime_error(error);
             }
-            d->node = vsapi->propGetNode(in, "clip", 0, &err);
+            d->node = vsapi->mapGetNode(in, "clip", 0, &err);
             d->vi = *vsapi->getVideoInfo(d->node);
 
-            if (!isConstantFormat(&d->vi)) {
+            if (!vsh::isConstantVideoFormat(&d->vi)) {
                 throw std::runtime_error("Only clips with constant format and dimensions allowed");
             }
-            if (d->vi.format->numPlanes != 3 || d->vi.format->colorFamily != cmRGB)
+            if (d->vi.format.numPlanes != 3 || d->vi.format.colorFamily != cfRGB)
                 throw std::runtime_error("input clip must be RGB format");
 
-            op = int64ToIntS(vsapi->propGetInt(in, "op", 0, &err));
+            op = vsh::int64ToIntS(vsapi->mapGetInt(in, "op", 0, &err));
             if (err) throw std::runtime_error("op is required argument");
             if (op >= sizeof selectors / sizeof selectors[0])
                 throw std::runtime_error("op is out of range.");
@@ -226,18 +225,18 @@ static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
             if (op != OP_SUPERRES)
                 d->scale = 1;
             else {
-                double scale = vsapi->propGetFloat(in, "scale", 0, &err);
+                double scale = vsapi->mapGetFloat(in, "scale", 0, &err);
                 if (err) scale = 1;
                 if (scale < 1)
                     throw std::runtime_error("invalid scale parameter");
                 d->scale = scale;
             }
 
-            double strength = vsapi->propGetFloat(in, "strength", 0, &err);
+            double strength = vsapi->mapGetFloat(in, "strength", 0, &err);
             if (err) strength = 0;
             d->strength = strength;
 
-            const char *modelDir = vsapi->propGetData(in, "model_dir", 0, &err);
+            const char *modelDir = vsapi->mapGetData(in, "model_dir", 0, &err);
             if (modelDir == nullptr)
                 modelDir = getenv("MODEL_DIR");
             if (modelDir == nullptr)
@@ -276,7 +275,7 @@ static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
         } catch (std::runtime_error &e) {
             if (d->node)
                 vsapi->freeNode(d->node);
-            vsapi->setError(out, (std::string{ "DLVFX: " } + e.what()).c_str());
+            vsapi->mapSetError(out, (std::string{ "DLVFX: " } + e.what()).c_str());
             return;
         }
 
@@ -286,7 +285,7 @@ static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
         d->vi.height *= d->scale;
 
         NvCVImage_ComponentType src_ct, dst_ct;
-        if (auto bps = d->vi.format->bitsPerSample, st = d->vi.format->sampleType; bps == 32 && st == stFloat) {
+        if (auto bps = d->vi.format.bitsPerSample, st = d->vi.format.sampleType; bps == 32 && st == stFloat) {
             src_ct = NVCV_F32;
 	    d->srcTransferFactor = 1.0f;
         } else if (bps == 8 && st == stInteger) {
@@ -296,8 +295,8 @@ static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
             throw std::runtime_error("unsupported clip format");
         }
 
-        int output_depth = int64ToIntS(vsapi->propGetInt(in, "output_depth", 0, &err));
-        if (err) output_depth = d->vi.format->bitsPerSample;
+        int output_depth = vsh::int64ToIntS(vsapi->mapGetInt(in, "output_depth", 0, &err));
+        if (err) output_depth = d->vi.format.bitsPerSample;
         d->output_depth = output_depth;
         if (output_depth == 32) {
             dst_ct = NVCV_F32;
@@ -332,17 +331,27 @@ static void VS_CC vfxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
         CK_VFX(NvVFX_Load(d->vfx));
     }
 
-    vsapi->createFilter(in, out, "DLVFX", vfxInit, vfxGetFrame, vfxFree, fmParallel, 0, ds.release(), core);
+    // Copy a video info object and set its format to the expected output format.
+    VSVideoInfo outputVideoInfo = ds[0].vi;
+    vsapi->queryVideoFormat(&outputVideoInfo.format, cfRGB, ds[0].output_depth == 32 ? stFloat : stInteger, ds[0].output_depth, 0, 0, core);
+
+    std::vector<VSFilterDependency> deps;
+    deps.reserve(num_streams);
+    for (auto i = 0; i < num_streams; i++) {
+        deps.emplace_back(ds[i].node, rpStrictSpatial);
+    }
+
+    vsapi->createVideoFilter(out, "DLVFX", &outputVideoInfo, vfxGetFrame, vfxFree, fmParallel, deps.data(), deps.size(), ds.release(), core);
 }
 
 //////////////////////////////////////////
 // Init
 
 #ifndef STANDALONE_VFX
-void VS_CC vfxInitialize(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
+void VS_CC vfxInitialize(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
 #else
-VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    configFunc("info.akarin.plugin", "akarin2", "Experimental Nvidia Maxine plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
+VS_EXTERNAL_API(void) VapourSynthPluginInit(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
+    vsapi->configPlugin("info.akarin.plugin", "akarin2", "Experimental Nvidia Maxine plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
 #endif
-    registerFunc("DLVFX", "clip:clip;op:int;scale:float:opt;strength:float:opt;output_depth:int:opt;num_streams:int:opt;model_dir:data:opt;", vfxCreate, nullptr, plugin);
+    vsapi->registerFunction("DLVFX", "clip:vnode;op:int;scale:float:opt;strength:float:opt;output_depth:int:opt;num_streams:int:opt;model_dir:data:opt;", "clip:vnode", vfxCreate, nullptr, plugin);
 }

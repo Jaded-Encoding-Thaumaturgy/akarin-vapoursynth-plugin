@@ -27,8 +27,8 @@
 #include <string>
 #include <vector>
 
-#include <VapourSynth.h>
-#include <VSHelper.h>
+#include <VapourSynth4.h>
+#include <VSHelper4.h>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -187,8 +187,8 @@ static stringlist split_text(const std::string& txt, int width, int height, int 
 }
 
 
-static void scrawl_text(std::string txt, int alignment, int scale, VSFrameRef *frame, const VSAPI *vsapi) {
-    const VSFormat *frame_format = vsapi->getFrameFormat(frame);
+static void scrawl_text(std::string txt, int alignment, int scale, VSFrame *frame, const VSAPI *vsapi) {
+    const VSVideoFormat *frame_format = vsapi->getVideoFrameFormat(frame);
     int width = vsapi->getFrameWidth(frame, 0);
     int height = vsapi->getFrameHeight(frame, 0);
 
@@ -240,7 +240,7 @@ static void scrawl_text(std::string txt, int alignment, int scale, VSFrameRef *f
             int dest_x = start_x + static_cast<int>(i)*character_width*scale;
             int dest_y = start_y;
 
-            if (frame_format->colorFamily == cmRGB) {
+            if (frame_format->colorFamily == cfRGB) {
                 for (int plane = 0; plane < frame_format->numPlanes; plane++) {
                     uint8_t *image = vsapi->getWritePtr(frame, plane);
                     int stride = vsapi->getStride(frame, plane);
@@ -258,9 +258,9 @@ static void scrawl_text(std::string txt, int alignment, int scale, VSFrameRef *f
 
                     if (plane == 0) {
                         if (frame_format->sampleType == stInteger) {
-                            const VSMap *m = vsapi->getFramePropsRO(frame);
+                            const VSMap *m = vsapi->getFramePropertiesRO(frame);
                             int err;
-                            bool full = vsapi->propGetInt(m, "_ColorRange", 0, &err) == 0;
+                            bool full = vsapi->mapGetInt(m, "_ColorRange", 0, &err) == 0;
                             if (err) full = false; // for YUV, assuming limited unless specified otherwise
                             scrawl_character_int(iter[i], image, stride, dest_x, dest_y, frame_format->bitsPerSample, scale, full);
                         } else {
@@ -305,7 +305,7 @@ struct PropAccess {
 };
 
 typedef struct {
-    std::vector<VSNodeRef *> nodes;
+    std::vector<VSNode *> nodes;
     const VSVideoInfo *vi;
 
     std::string text;
@@ -375,12 +375,6 @@ template <> struct formatter<MissingValue>: public formatter<int>, formatter<str
 };
 FMT_END_NAMESPACE
 
-static void VS_CC textInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    TextData *d = static_cast<TextData *>(*instanceData);
-    vsapi->setVideoInfo(d->vi, 1, node);
-}
-
-
 using dynamic_format_arg_store = fmt::dynamic_format_arg_store<fmt::format_context>;
 
 std::vector<PropAccess> checkFormatString(const std::string f) {
@@ -442,7 +436,7 @@ static void pushArg(const PropAccess &pa, dynamic_format_arg_store &store, const
     int err;
 #define CHECK_ARG(pname, pfunc) do { \
     if (pa.name == pname) { \
-        int val = int64ToIntS(vsapi->propGetInt(map, pname, 0, &err)); \
+        int val = vsh::int64ToIntS(vsapi->mapGetInt(map, pname, 0, &err)); \
         if (err) val = -1; \
         store.push_back(fmt::arg(pa.id.c_str(), CustomValue(val, pfunc))); \
         return; \
@@ -458,40 +452,40 @@ static void pushArg(const PropAccess &pa, dynamic_format_arg_store &store, const
 #undef CHECK_ARG
 
     if (pa.name == "_PictType") {
-        const char *picttype = vsapi->propGetData(map, "_PictType", 0, &err);
+        const char *picttype = vsapi->mapGetData(map, "_PictType", 0, &err);
         store.push_back(fmt::arg(pa.id.c_str(), picttype ? picttype : "Unknown"));
         return;
     }
 
     const char *key = pa.name.c_str();
-    auto type = vsapi->propGetType(map, key);
+    auto type = vsapi->mapGetType(map, key);
     switch (type) {
     case ptInt: {
-        int n = vsapi->propNumElements(map, key);
+        int n = vsapi->mapNumElements(map, key);
         if (n == 1)
-            store.push_back(fmt::arg(pa.id.c_str(), vsapi->propGetInt(map, key, 0, nullptr)));
+            store.push_back(fmt::arg(pa.id.c_str(), vsapi->mapGetInt(map, key, 0, nullptr)));
         else
-            store.push_back(fmt::arg(pa.id.c_str(), vector_view<int64_t>(vsapi->propGetIntArray(map, key, nullptr), n)));
+            store.push_back(fmt::arg(pa.id.c_str(), vector_view<int64_t>(vsapi->mapGetIntArray(map, key, nullptr), n)));
         break;
     }
     case ptFloat: {
-        int n = vsapi->propNumElements(map, key);
+        int n = vsapi->mapNumElements(map, key);
         if (n == 1)
-            store.push_back(fmt::arg(pa.id.c_str(), vsapi->propGetFloat(map, key, 0, nullptr)));
+            store.push_back(fmt::arg(pa.id.c_str(), vsapi->mapGetFloat(map, key, 0, nullptr)));
         else
-            store.push_back(fmt::arg(pa.id.c_str(), vector_view<double>(vsapi->propGetFloatArray(map, key, nullptr), n)));
+            store.push_back(fmt::arg(pa.id.c_str(), vector_view<double>(vsapi->mapGetFloatArray(map, key, nullptr), n)));
         break;
     }
     case ptData:
-        store.push_back(fmt::arg(pa.id.c_str(), vsapi->propGetData(map, key, 0, nullptr)));
+        store.push_back(fmt::arg(pa.id.c_str(), vsapi->mapGetData(map, key, 0, nullptr)));
         break;
     case ptUnset:
         store.push_back(fmt::arg(pa.id.c_str(), MissingValue("<missing key>")));
         break;
-    case ptNode:
+    case ptVideoNode:
         store.push_back(fmt::arg(pa.id.c_str(), MissingValue("<node")));
         break;
-    case ptFrame:
+    case ptVideoFrame:
         store.push_back(fmt::arg(pa.id.c_str(), MissingValue("<frame>")));
         break;
     case ptFunction:
@@ -529,21 +523,21 @@ bool isVspipe() {
     return vspipe;
 }
 
-static const VSFrameRef *VS_CC textGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    TextData *d = static_cast<TextData *>(*instanceData);
+static const VSFrame *VS_CC textGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    TextData *d = static_cast<TextData *>(instanceData);
 
     if (activationReason == arInitial) {
         for (auto node: d->nodes)
             vsapi->requestFrameFilter(n, node, frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        std::vector<const VSFrameRef *> srcs;
-        const VSFrameRef *src = nullptr;
+        std::vector<const VSFrame *> srcs;
+        const VSFrame *src = nullptr;
         auto out = fmt::memory_buffer();
         try {
             for (auto node: d->nodes) {
                 auto f = vsapi->getFrameFilter(n, node, frameCtx);
                 srcs.push_back(f);
-                const VSFormat *frame_format = vsapi->getFrameFormat(f);
+                const VSVideoFormat *frame_format = vsapi->getVideoFrameFormat(f);
                 if ((frame_format->sampleType == stInteger && frame_format->bitsPerSample > 16) ||
                         (frame_format->sampleType == stFloat && frame_format->bitsPerSample != 32)) {
                     throw std::runtime_error("Only 8..16 bit integer and 32 bit float formats supported");
@@ -559,7 +553,7 @@ static const VSFrameRef *VS_CC textGetFrame(int n, int activationReason, void **
             for (const auto &pa: d->pa) {
                 int index = pa.index;
                 if (maps[index] == nullptr)
-                    maps[index] = vsapi->getFramePropsRO(srcs[index]);
+                    maps[index] = vsapi->getFramePropertiesRO(srcs[index]);
                 pushArg(pa, store, maps, vsapi);
             }
 
@@ -586,12 +580,12 @@ static const VSFrameRef *VS_CC textGetFrame(int n, int activationReason, void **
             return nullptr;
         }
 
-        VSFrameRef *dst = vsapi->copyFrame(src, core);
+        VSFrame *dst = vsapi->copyFrame(src, core);
         if (d->propName.size() == 0 && (d->vspipe || !isVspipe())) {
             scrawl_text(std::string(out.data(), out.size()), d->alignment, d->scale, dst, vsapi);
         } else {
-            VSMap *map = vsapi->getFramePropsRW(dst);
-            vsapi->propSetData(map, d->propName.c_str(), out.data(), out.size(), paReplace);
+            VSMap *map = vsapi->getFramePropertiesRW(dst);
+            vsapi->mapSetData(map, d->propName.c_str(), out.data(), out.size(), dtUtf8, maReplace);
         }
 
         for (auto f: srcs)
@@ -617,22 +611,19 @@ static void VS_CC textCreate(const VSMap *in, VSMap *out, void *userData, VSCore
     int err;
 
     try {
-        int numclips = vsapi->propNumElements(in, "clips");
+        int numclips = vsapi->mapNumElements(in, "clips");
         for (int i = 0; i < numclips; i++) {
-            auto node = vsapi->propGetNode(in, "clips", i, &err);
+            auto node = vsapi->mapGetNode(in, "clips", i, &err);
             d->nodes.push_back(node);
         }
         d->vi = vsapi->getVideoInfo(d->nodes[0]);
 
-        if (isCompatFormat(d->vi))
-            throw std::runtime_error("Text: Compat formats not supported");
-
-        if (d->vi->format && ((d->vi->format->sampleType == stInteger && d->vi->format->bitsPerSample > 16) ||
-            (d->vi->format->sampleType == stFloat && d->vi->format->bitsPerSample != 32))) {
+        if (vsh::isConstantVideoFormat(d->vi) && ((d->vi->format.sampleType == stInteger && d->vi->format.bitsPerSample > 16) ||
+            (d->vi->format.sampleType == stFloat && d->vi->format.bitsPerSample != 32))) {
                 throw std::runtime_error("Text: Only 8-16 bit integer and 32 bit float formats supported");
         }
 
-        d->alignment = int64ToIntS(vsapi->propGetInt(in, "alignment", 0, &err));
+        d->alignment = vsh::int64ToIntS(vsapi->mapGetInt(in, "alignment", 0, &err));
         if (err) {
             d->alignment = 7; // top left
         }
@@ -640,12 +631,12 @@ static void VS_CC textCreate(const VSMap *in, VSMap *out, void *userData, VSCore
         if (d->alignment < 1 || d->alignment > 9)
             throw std::runtime_error("Text: alignment must be between 1 and 9 (think numpad)");
 
-        d->scale = int64ToIntS(vsapi->propGetInt(in, "scale", 0, &err));
+        d->scale = vsh::int64ToIntS(vsapi->mapGetInt(in, "scale", 0, &err));
         if (err) {
             d->scale = 1;
         }
 
-        d->text = vsapi->propGetData(in, "text", 0, nullptr);
+        d->text = vsapi->mapGetData(in, "text", 0, nullptr);
         d->pa = checkFormatString(d->text);
 
         for (const auto &pa: d->pa) {
@@ -653,41 +644,55 @@ static void VS_CC textCreate(const VSMap *in, VSMap *out, void *userData, VSCore
                 throw std::runtime_error(fmt::format("Text: {} references to out of bound clip (only {} clips)", pa.id, d->nodes.size()));
         }
 
-        auto propName = vsapi->propGetData(in, "prop", 0, &err);
+        auto propName = vsapi->mapGetData(in, "prop", 0, &err);
         if (propName)
             d->propName = propName;
-        d->vspipe = vsapi->propGetInt(in, "vspipe", 0, &err);
-        d->strict = vsapi->propGetInt(in, "strict", 0, &err);
+        d->vspipe = vsapi->mapGetInt(in, "vspipe", 0, &err);
+        d->strict = vsapi->mapGetInt(in, "strict", 0, &err);
     } catch (std::runtime_error &e) {
         for (auto p: d->nodes)
             vsapi->freeNode(p);
-        vsapi->setError(out, e.what());
+        vsapi->mapSetError(out, e.what());
         return;
     }
 
-    vsapi->createFilter(in, out, "Text", textInit, textGetFrame, textFree, fmParallel, 0, d.release(), core);
+    std::vector<VSFilterDependency> deps;
+    deps.reserve(d->nodes.size());
+    std::transform(
+        d->nodes.begin(),
+        d->nodes.end(),
+        std::back_inserter(deps),
+        [&](auto *node) { return VSFilterDependency{node, rpStrictSpatial}; }
+    );
+
+    const VSVideoInfo *vi = d->vi;
+    vsapi->createVideoFilter(out, "Text", vi, textGetFrame, textFree, fmParallel, deps.data(), deps.size(), d.release(), core);
 }
 
 static void VS_CC versionCreate(const VSMap *in, VSMap *out, void *user_data, VSCore *core, const VSAPI *vsapi)
 {
     for (const auto &f : features)
-        vsapi->propSetData(out, "text_features", f.c_str(), -1, paAppend);
+        vsapi->mapSetData(out, "text_features", f.c_str(), -1, dtUtf8, maAppend);
 }
 
 #ifndef STANDALONE_TEXT
-void VS_CC textInitialize(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
+void VS_CC textInitialize(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
     registerVersionFunc(versionCreate);
 #else
-VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    configFunc("info.akarin.plugin", "akarin2", "Format Text plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
+VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
+    vsapi->configPlugin("info.akarin.plugin", "akarin2", "Format Text plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
 #endif
-    registerFunc("Text",
-        "clips:clip[];"
+    vsapi->registerFunction("Text",
+        "clips:vnode[];"
         "text:data;"
         "alignment:int:opt;"
         "scale:int:opt;"
         "prop:data:opt;"
         "strict:int:opt;"
-        "vspipe:int:opt;"
-        , textCreate, nullptr, plugin);
+        "vspipe:int:opt;",
+        "clip:vnode;",
+        textCreate,
+        nullptr,
+        plugin
+    );
 }

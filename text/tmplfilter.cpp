@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <VapourSynth.h>
-#include <VSHelper.h>
+#include <VapourSynth4.h>
+#include <VSHelper4.h>
 
 #include "inja/inja.hpp"
 
@@ -40,7 +40,7 @@ public:
 };
 
 typedef struct {
-    std::vector<VSNodeRef *> nodes;
+    std::vector<VSNode *> nodes;
     const VSVideoInfo *vi;
 
     std::vector<std::string> text;
@@ -50,20 +50,15 @@ typedef struct {
     std::vector<inja::Template> tmpl;
 } TmplData;
 
-static void VS_CC tmplInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    TmplData *d = static_cast<TmplData *>(*instanceData);
-    vsapi->setVideoInfo(d->vi, 1, node);
-}
-
-static const VSFrameRef *VS_CC tmplGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    TmplData *d = static_cast<TmplData *>(*instanceData);
+static const VSFrame *VS_CC tmplGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    TmplData *d = static_cast<TmplData *>(instanceData);
 
     if (activationReason == arInitial) {
         for (auto node: d->nodes)
             vsapi->requestFrameFilter(n, node, frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        std::vector<const VSFrameRef *> srcs;
-        const VSFrameRef *src = nullptr;
+        std::vector<const VSFrame *> srcs;
+        const VSFrame *src = nullptr;
         std::vector<std::string> out(d->tmpl.size());
         try {
             for (auto node: d->nodes) {
@@ -95,8 +90,8 @@ static const VSFrameRef *VS_CC tmplGetFrame(int n, int activationReason, void **
                 return idx;
             };
 
-            static const std::map<json::json_pointer, std::function<json(int, const std::vector<VSNodeRef *> &, const VSAPI *)>> builtins = {
-                { json::json_pointer("/N"), [](int n, const std::vector<VSNodeRef *> &ns, const VSAPI *) -> json { return n; } },
+            static const std::map<json::json_pointer, std::function<json(int, const std::vector<VSNode *> &, const VSAPI *)>> builtins = {
+                { json::json_pointer("/N"), [](int n, const std::vector<VSNode *> &ns, const VSAPI *) -> json { return n; } },
             };
 
             std::map<json::json_pointer, json> cache;
@@ -121,13 +116,13 @@ static const VSFrameRef *VS_CC tmplGetFrame(int n, int activationReason, void **
                 if (index >= maps.size())
                     throw std::runtime_error(ptr.to_string() + " clip out of range");
                 if (maps[index] == nullptr)
-                    maps[index] = vsapi->getFramePropsRO(srcs[index]);
+                    maps[index] = vsapi->getFramePropertiesRO(srcs[index]);
                 const VSMap *map = maps[index];
 
-                char type = vsapi->propGetType(map, pname.c_str());
-                int numElements = vsapi->propNumElements(map, pname.c_str());
+                char type = vsapi->mapGetType(map, pname.c_str());
+                int numElements = vsapi->mapNumElements(map, pname.c_str());
                 if (type == ptInt) {
-                    const int64_t *intArr = vsapi->propGetIntArray(map, pname.c_str(), nullptr);
+                    const int64_t *intArr = vsapi->mapGetIntArray(map, pname.c_str(), nullptr);
                     if (tokens.size() == 2 && numElements > 1) {
                         for (int i = 0; i < numElements; i++)
                             val += intArr[i];
@@ -137,7 +132,7 @@ static const VSFrameRef *VS_CC tmplGetFrame(int n, int activationReason, void **
                             val = intArr[idx];
                     }
                 } else if (type == ptFloat) {
-                    const double *floatArr = vsapi->propGetFloatArray(map, pname.c_str(), nullptr);
+                    const double *floatArr = vsapi->mapGetFloatArray(map, pname.c_str(), nullptr);
                     if (tokens.size() == 2 && numElements > 1) {
                         for (int i = 0; i < numElements; i++)
                             val += floatArr[i];
@@ -149,24 +144,24 @@ static const VSFrameRef *VS_CC tmplGetFrame(int n, int activationReason, void **
                 } else if (type == ptData) {
                     if (tokens.size() == 2 && numElements > 1) {
                         for (int idx = 0; idx < numElements; idx++) {
-                            const char *value = vsapi->propGetData(map, pname.c_str(), idx, nullptr);
-                            int size = vsapi->propGetDataSize(map, pname.c_str(), idx, nullptr);
+                            const char *value = vsapi->mapGetData(map, pname.c_str(), idx, nullptr);
+                            int size = vsapi->mapGetDataSize(map, pname.c_str(), idx, nullptr);
                             val += std::string(value, size);
                         }
                     } else {
                         int idx = tokens.size() < 3 ? 0 : extractIndex(tokens[2]);
                         if (idx < numElements) {
-                            const char *value = vsapi->propGetData(map, pname.c_str(), idx, nullptr);
-                            int size = vsapi->propGetDataSize(map, pname.c_str(), idx, nullptr);
+                            const char *value = vsapi->mapGetData(map, pname.c_str(), idx, nullptr);
+                            int size = vsapi->mapGetDataSize(map, pname.c_str(), idx, nullptr);
                             val = std::string(value, size);
                         }
                     }
-                } else if (type == ptFrame) {
+                } else if (type == ptVideoFrame) {
                     std::string text = std::to_string(numElements) + " frame";
                     if (numElements != 1)
                         text += 's';
                     val = text;
-                } else if (type == ptNode) {
+                } else if (type == ptVideoNode) {
                     std::string text = std::to_string(numElements) + " node";
                     if (numElements != 1)
                         text += 's';
@@ -206,10 +201,10 @@ static const VSFrameRef *VS_CC tmplGetFrame(int n, int activationReason, void **
             return nullptr;
         }
 
-        VSFrameRef *dst = vsapi->copyFrame(src, core);
-        VSMap *map = vsapi->getFramePropsRW(dst);
+        VSFrame *dst = vsapi->copyFrame(src, core);
+        VSMap *map = vsapi->getFramePropertiesRW(dst);
         for (int i = 0; i < out.size(); i++)
-            vsapi->propSetData(map, d->propName[i].c_str(), out[i].data(), out[i].size(), paReplace);
+            vsapi->mapSetData(map, d->propName[i].c_str(), out[i].data(), out[i].size(), dtUtf8, maReplace);
 
         for (auto f: srcs)
             vsapi->freeFrame(f);
@@ -233,18 +228,18 @@ static void VS_CC tmplCreate(const VSMap *in, VSMap *out, void *userData, VSCore
     std::unique_ptr<TmplData> d(new TmplData);
 
     try {
-        int numclips = vsapi->propNumElements(in, "clips");
+        int numclips = vsapi->mapNumElements(in, "clips");
         for (int i = 0; i < numclips; i++) {
-            auto node = vsapi->propGetNode(in, "clips", i, nullptr);
+            auto node = vsapi->mapGetNode(in, "clips", i, nullptr);
             d->nodes.push_back(node);
         }
         d->vi = vsapi->getVideoInfo(d->nodes[0]);
-        int n1 = vsapi->propNumElements(in, "text"), n2 = vsapi->propNumElements(in, "prop");
+        int n1 = vsapi->mapNumElements(in, "text"), n2 = vsapi->mapNumElements(in, "prop");
         if (n1 != n2)
             throw std::runtime_error("text and prop must be paired");
         for (int i = 0; i < n1; i++) {
-            d->text.push_back(vsapi->propGetData(in, "text", i, nullptr));
-            d->propName.push_back(vsapi->propGetData(in, "prop", i, nullptr));
+            d->text.push_back(vsapi->mapGetData(in, "text", i, nullptr));
+            d->propName.push_back(vsapi->mapGetData(in, "prop", i, nullptr));
             try {
                 d->tmpl.push_back(d->env.parse(d->text[i]));
             } catch (inja::InjaError &e) {
@@ -255,30 +250,43 @@ static void VS_CC tmplCreate(const VSMap *in, VSMap *out, void *userData, VSCore
     } catch (std::runtime_error &e) {
         for (auto p: d->nodes)
             vsapi->freeNode(p);
-        vsapi->setError(out, e.what());
+        vsapi->mapSetError(out, e.what());
         return;
     }
 
-    vsapi->createFilter(in, out, "Tmpl", tmplInit, tmplGetFrame, tmplFree, fmParallel, 0, d.release(), core);
+    std::vector<VSFilterDependency> deps;
+    deps.reserve(d->nodes.size());
+    std::transform(
+        d->nodes.begin(),
+        d->nodes.end(),
+        std::back_inserter(deps),
+        [&](auto *node) {
+            return VSFilterDependency{node, rpStrictSpatial};
+        }
+    );
+
+    const VSVideoInfo *vi = d->vi;
+    vsapi->createVideoFilter(out, "Tmpl", vi, tmplGetFrame, tmplFree, fmParallel, deps.data(), deps.size(), d.release(), core);
 }
 
 static void VS_CC versionCreate(const VSMap *in, VSMap *out, void *user_data, VSCore *core, const VSAPI *vsapi) {
     for (const auto &f : features)
-        vsapi->propSetData(out, "tmpl_features", f.c_str(), -1, paAppend);
+        vsapi->mapSetData(out, "tmpl_features", f.c_str(), -1, dtUtf8, maAppend);
 }
 
 } // namespace
 
 #ifndef STANDALONE_TMPL
-void VS_CC tmplInitialize(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
+void VS_CC tmplInitialize(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
     registerVersionFunc(versionCreate);
 #else
-VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    configFunc("info.akarin.plugin", "akarin2", "Text Template plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
+VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
+    vsapi->configPlugin("info.akarin.plugin", "akarin2", "Text Template plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
 #endif
-    registerFunc("Tmpl",
-        "clips:clip[];"
+    vsapi->registerFunction("Tmpl",
+        "clips:vnode[];"
         "prop:data[];"
-        "text:data[];"
-        , tmplCreate, nullptr, plugin);
+        "text:data[];",
+        "clip:vnode",
+        tmplCreate, nullptr, plugin);
 }

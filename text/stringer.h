@@ -24,16 +24,14 @@ std::string fieldBasedToString(int field) {
 
 std::string colorFamilyToString(int cf) {
     std::string family;
-    if (cf == cmGray)
+    if (cf == cfGray)
         family = "Gray";
-    else if (cf == cmRGB)
+    else if (cf == cfRGB)
         family = "RGB";
-    else if (cf == cmYUV)
+    else if (cf == cfYUV)
         family = "YUV";
-    else if (cf == cmYCoCg)
-        family = "YCoCg";
-    else if (cf == cmCompat)
-        family = "Compat";
+    else if (cf == cfUndefined)
+        family = "Undefined";
     else
         family = fmt::format("ColorFamily({})", cf);
     return family;
