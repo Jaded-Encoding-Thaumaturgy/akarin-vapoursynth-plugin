@@ -21,8 +21,8 @@
 #ifndef FILTERSHARED_H
 #define FILTERSHARED_H
 
-#include "VapourSynth.h"
-#include "VSHelper.h"
+#include "VapourSynth4.h"
+#include "VSHelper4.h"
 #include <string.h>
 
 #define RETERROR(x) do { vsapi->setError(out, (x)); return; } while (0)
@@ -49,28 +49,21 @@ static inline void vs_memset_float(void *ptr, float value, size_t num) {
         *tptr++ = value;
 }
 
-// to detect compat formats
-static inline int isCompatFormat(const VSVideoInfo *vi) {
-    return vi->format && vi->format->colorFamily == cmCompat;
-}
-
 // to get the width/height of a plane easily when not having a frame around
 static inline int planeWidth(const VSVideoInfo *vi, int plane) {
-    return vi->width >> (plane ? vi->format->subSamplingW : 0);
+    return vi->width >> (plane ? vi->format.subSamplingW : 0);
 }
 
 static inline int planeHeight(const VSVideoInfo *vi, int plane) {
-    return vi->height >> (plane ? vi->format->subSamplingH : 0);
+    return vi->height >> (plane ? vi->format.subSamplingH : 0);
 }
 
 // get the triplet representing black for any colorspace (works for union with float too since it's always 0)
-static inline void setBlack(uint32_t color[3], const VSFormat *format) {
+static inline void setBlack(uint32_t color[3], const VSVideoFormat *format) {
     for (int i = 0; i < 3; i++)
         color[i] = 0;
-    if (format->sampleType == stInteger && (format->colorFamily == cmYUV || format->colorFamily == cmYCoCg))
+    if (format->sampleType == stInteger && format->colorFamily == cfYUV)
         color[1] = color[2] = (1 << (format->bitsPerSample - 1));
-    else if (format->id == pfCompatYUY2)
-        color[1] = color[2] = 128;
 }
 
 static inline int64_t floatToInt64S(float f) {

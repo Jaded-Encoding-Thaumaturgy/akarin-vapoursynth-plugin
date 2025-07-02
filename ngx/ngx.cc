@@ -7,8 +7,8 @@
 #include <vector>
 #include <stdio.h>
 
-#include "VapourSynth.h"
-#include "VSHelper.h"
+#include "VapourSynth4.h"
+#include "VSHelper4.h"
 
 #ifndef _WIN32
 #error "Unsupported platform"
@@ -69,7 +69,7 @@ static void *cudaMalloc(size_t size) {
 struct NgxData {
     std::mutex lock;
 
-    VSNodeRef *node;
+    VSNode *node;
     VSVideoInfo vi;
     int scale;
 
@@ -109,25 +109,20 @@ struct NgxData {
     }
 };
 
-static void VS_CC ngxInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    NgxData *d = static_cast<NgxData *>(*instanceData);
-    vsapi->setVideoInfo(&d->vi, 1, node);
-}
-
-static const VSFrameRef *VS_CC ngxGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    NgxData *d = static_cast<NgxData *>(*instanceData);
+static const VSFrame *VS_CC ngxGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    NgxData *d = static_cast<NgxData *>(instanceData);
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrame *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-        const VSFormat *fi = d->vi.format;
+        const VSVideoFormat fi = d->vi.format;
         assert(vsapi->getFrameHeight(src, 0) == (int)d->in_image_height());
         assert(vsapi->getFrameWidth(src, 0) == (int)d->in_image_width());
         int planes[3] = { 0, 1, 2 };
-        const VSFrameRef *srcf[3] = { nullptr, nullptr, nullptr };
-        VSFrameRef *dst = vsapi->newVideoFrame2(fi, d->out_image_width(), d->out_image_height(), srcf, planes, src, core);
+        const VSFrame *srcf[3] = { nullptr, nullptr, nullptr };
+        VSFrame *dst = vsapi->newVideoFrame2(&fi, d->out_image_width(), d->out_image_height(), srcf, planes, src, core);
 
         // The NGX API is not thread safe.
         std::lock_guard<std::mutex> lock(d->lock);
@@ -213,29 +208,29 @@ static void VS_CC ngxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
                 throw std::runtime_error(error);
         }
 
-        d->node = vsapi->propGetNode(in, "clip", 0, &err);
+        d->node = vsapi->mapGetNode(in, "clip", 0, &err);
         d->vi = *vsapi->getVideoInfo(d->node);
 
-        if (!isConstantFormat(&d->vi)) {
+        if (!vsh::isConstantVideoFormat(&d->vi)) {
             throw std::runtime_error("Only clips with constant format and dimensions allowed");
         }
-        if (d->vi.format->numPlanes != 3 || d->vi.format->colorFamily != cmRGB)
+        if (d->vi.format.numPlanes != 3 || d->vi.format.colorFamily != cfRGB)
             throw std::runtime_error("input clip must be RGB format");
-        if (d->vi.format->sampleType != stFloat || d->vi.format->bitsPerSample != 32)
+        if (d->vi.format.sampleType != stFloat || d->vi.format.bitsPerSample != 32)
             throw std::runtime_error("input clip must be 32-bit float format");
 
-        int scale = int64ToIntS(vsapi->propGetInt(in, "scale", 0, &err));
+        int scale = vsh::int64ToIntS(vsapi->mapGetInt(in, "scale", 0, &err));
         if (err) scale = 2;
         if (scale != 2 && scale != 4 && scale != 8)
             throw std::runtime_error("scale must be 2/4/8");
         d->scale = scale;
 
-        devid = int64ToIntS(vsapi->propGetInt(in, "device_id", 0, &err));
+        devid = vsh::int64ToIntS(vsapi->mapGetInt(in, "device_id", 0, &err));
         if (err) devid = 0;
     } catch (std::runtime_error &e) {
         if (d->node)
             vsapi->freeNode(d->node);
-        vsapi->setError(out, (std::string{ "DLISR: " } + e.what()).c_str());
+        vsapi->mapSetError(out, (std::string{ "DLISR: " } + e.what()).c_str());
         return;
     }
 
@@ -277,17 +272,20 @@ static void VS_CC ngxCreate(const VSMap *in, VSMap *out, void *userData, VSCore 
     d->allocate();
     CK_CUDA(cuCtxPopCurrent_v2(nullptr));
 
-    vsapi->createFilter(in, out, "DLISR", ngxInit, ngxGetFrame, ngxFree, fmParallel, 0, d.release(), core);
+    VSFilterDependency deps[] = {{d->node, rpStrictSpatial}};
+
+    const VSVideoInfo *vi = &d->vi;
+    vsapi->createVideoFilter(out, "DLISR", vi, ngxGetFrame, ngxFree, fmParallel, deps, 1, d.release(), core);
 }
 
 //////////////////////////////////////////
 // Init
 
 #ifndef STANDALONE_NGX
-void VS_CC ngxInitialize(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
+void VS_CC ngxInitialize(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
 #else
-VS_EXTERNAL_API(void) VS_CC VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    configFunc("info.akarin.plugin", "akarin2", "Experimental Nvidia DLISR plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
+VS_EXTERNAL_API(void) VS_CC VapourSynthPluginInit(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
+    vsapi->configPlugin("info.akarin.plugin", "akarin2", "Experimental Nvidia DLISR plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
 #endif
-    registerFunc("DLISR", "clip:clip;scale:int:opt;device_id:int:opt;", ngxCreate, nullptr, plugin);
+    vsapi->registerFunction("DLISR", "clip:vnode;scale:int:opt;device_id:int:opt;", "clip:vnode", ngxCreate, nullptr, plugin);
 }

@@ -1,8 +1,8 @@
 #ifndef NGX_INTERNALFILTERS_H
 #define NGX_INTERNALFILTERS_H
 
-#include "VapourSynth.h"
+#include "VapourSynth4.h"
 
-void VS_CC ngxInitialize(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin);
+void VS_CC ngxInitialize(VSPlugin *plugin, const VSPLUGINAPI *vsapi);
 
 #endif // INTERNALFILTERS_H
