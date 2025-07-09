@@ -35,8 +35,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "VapourSynth.h"
-#include "VSHelper.h"
+#include "VapourSynth4.h"
+#include "VSHelper4.h"
 #include "cpufeatures.h"
 #include "internalfilters.h"
 #include "vslog.h"
@@ -184,7 +184,7 @@ enum PlaneOp {
 };
 
 struct ExprData {
-    VSNodeRef *node[MAX_EXPR_INPUTS];
+    VSNode *node[MAX_EXPR_INPUTS];
     VSVideoInfo vi;
     std::vector<ExprInstruction> bytecode[3];
     std::vector<PropAccess> pa[3];
@@ -3735,7 +3735,7 @@ static void VS_CC exprInit(VSMap *in, VSMap *out, void **instanceData, VSNode *n
     vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
-static const VSFrameRef *VS_CC exprGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+static const VSFrame *VS_CC exprGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
     ExprData *d = static_cast<ExprData *>(*instanceData);
     int numInputs = d->numInputs;
 
@@ -3743,7 +3743,7 @@ static const VSFrameRef *VS_CC exprGetFrame(int n, int activationReason, void **
         for (int i = 0; i < numInputs; i++)
             vsapi->requestFrameFilter(n, d->node[i], frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        const VSFrameRef *src[MAX_EXPR_INPUTS] = {};
+        const VSFrame *src[MAX_EXPR_INPUTS] = {};
         for (int i = 0; i < numInputs; i++)
             src[i] = vsapi->getFrameFilter(n, d->node[i], frameCtx);
 
@@ -3751,8 +3751,8 @@ static const VSFrameRef *VS_CC exprGetFrame(int n, int activationReason, void **
         int height = vsapi->getFrameHeight(src[0], 0);
         int width = vsapi->getFrameWidth(src[0], 0);
         int planes[3] = { 0, 1, 2 };
-        const VSFrameRef *srcf[3] = { d->plane[0] != poCopy ? nullptr : src[0], d->plane[1] != poCopy ? nullptr : src[0], d->plane[2] != poCopy ? nullptr : src[0] };
-        VSFrameRef *dst = vsapi->newVideoFrame2(fi, width, height, srcf, planes, src[0], core);
+        const VSFrame *srcf[3] = { d->plane[0] != poCopy ? nullptr : src[0], d->plane[1] != poCopy ? nullptr : src[0], d->plane[2] != poCopy ? nullptr : src[0] };
+        VSFrame *dst = vsapi->newVideoFrame2(fi, width, height, srcf, planes, src[0], core);
 
         const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
         int src_stride[MAX_EXPR_INPUTS] = {};
@@ -3853,7 +3853,7 @@ static void VS_CC exprCreate(const VSMap *in, VSMap *out, void *userData, VSCore
 #endif
 
     try {
-        d->numInputs = vsapi->propNumElements(in, "clips");
+        d->numInputs = vsapi->mapNumElements(in, "clips");
         if (d->numInputs > 26)
             throw std::runtime_error("More than 26 input clips provided");
 
@@ -3903,13 +3903,13 @@ static void VS_CC exprCreate(const VSMap *in, VSMap *out, void *userData, VSCore
             }
         }
 
-        int nexpr = vsapi->propNumElements(in, "expr");
+        int nexpr = vsapi->mapNumElements(in, "expr");
         if (nexpr > d->vi.format->numPlanes)
             throw std::runtime_error("More expressions given than there are planes");
 
         std::string expr[3];
         for (int i = 0; i < nexpr; i++) {
-            expr[i] = vsapi->propGetData(in, "expr", i, nullptr);
+            expr[i] = vsapi->mapGetData(in, "expr", i, nullptr);
         }
         for (int i = nexpr; i < 3; ++i) {
             expr[i] = expr[nexpr - 1];
@@ -3957,9 +3957,9 @@ static void VS_CC exprCreate(const VSMap *in, VSMap *out, void *userData, VSCore
 
 void VS_CC versionCreate(const VSMap *in, VSMap *out, void *user_data, VSCore *core, const VSAPI *vsapi)
 {
-    vsapi->propSetData(out, "expr_backend", "jitasm", -1, paAppend);
+    vsapi->mapSetData(out, "expr_backend", "jitasm", -1, maAppend);
     for (const auto &f : features)
-        vsapi->propSetData(out, "expr_features", f.c_str(), -1, paAppend);
+        vsapi->mapSetData(out, "expr_features", f.c_str(), -1, maAppend);
 }
 
 } // namespace
@@ -3968,9 +3968,8 @@ void VS_CC versionCreate(const VSMap *in, VSMap *out, void *user_data, VSCore *c
 //////////////////////////////////////////
 // Init
 
-void VS_CC exprInitialize(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    //configFunc("com.vapoursynth.expr", "expr", "VapourSynth Expr Filter", VAPOURSYNTH_API_VERSION, 1, plugin);
-    registerFunc("Expr", "clips:clip[];expr:data[];format:int:opt;", exprCreate, nullptr, plugin);
+void VS_CC exprInitialize(VSPlugin *plugin, const VSPLUGINAPI *vsapi) {
+    vsapi->registerFunction("Expr", "clips:vnode[];expr:data[];format:int:opt;", "clip:vnode;", exprCreate, nullptr, plugin);
 
     registerVersionFunc(versionCreate);
 }
