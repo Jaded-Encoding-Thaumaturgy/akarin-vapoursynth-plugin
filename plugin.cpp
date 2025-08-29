@@ -34,7 +34,19 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
         0,
         plugin
     );
-    vsapi->registerFunction("Version", "", "clip:vnode;", versionCreate, nullptr, plugin);
+    vsapi->registerFunction(
+        "Version",
+        "",
+        "version:data;"
+        "expr_backend:data;"
+        "expr_features:data[];"
+        "select_features:data[];"
+        "text_features:data[];"
+        "tmpl_features:data[];",
+        versionCreate,
+        nullptr,
+        plugin
+    );
     exprInitialize(plugin, vsapi);
 #ifdef HAVE_NGX
     ngxInitialize(plugin, vsapi);
