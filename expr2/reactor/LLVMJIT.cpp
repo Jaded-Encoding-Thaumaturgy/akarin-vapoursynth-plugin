@@ -31,6 +31,10 @@ __pragma(warning(push))
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
+#if LLVM_VERSION_MAJOR >= 13
+	#include "llvm/ExecutionEngine/Orc/SelfExecutorProcessControl.h"
+#endif
+
 #if LLVM_VERSION_MAJOR >= 20
 	#include "llvm/ExecutionEngine/Orc/AbsoluteSymbols.h"
 #endif
@@ -41,6 +45,10 @@ __pragma(warning(push))
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/TargetParser/Host.h"
+#if LLVM_VERSION_MAJOR >= 21
+	#include "llvm/TargetParser/Triple.h"
+	#include "llvm/Support/MemoryBuffer.h"
+#endif
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
 #include "llvm/Transforms/Scalar/ADCE.h"
@@ -749,9 +757,17 @@ public:
 		    return std::move(*p);
 	    }())
 #endif
-	    , objectLayer(session, [this]() {
-		    return std::make_unique<llvm::SectionMemoryManager>(&memoryMapper);
-	    })
+	    , objectLayer(session,
+#if LLVM_VERSION_MAJOR >= 21
+	                   [this](const llvm::MemoryBuffer &) {
+		                   return std::make_unique<llvm::SectionMemoryManager>(&memoryMapper);
+	                   }
+#else
+	                   [this]() {
+		                   return std::make_unique<llvm::SectionMemoryManager>(&memoryMapper);
+	                   }
+#endif
+	    )
 	    , addresses(count)
 	{
 		bool fatalCompileIssue = false;
@@ -873,7 +889,11 @@ JITBuilder::JITBuilder(const rr::Config &config)
     , module(new llvm::Module("", *context))
     , builder(new llvm::IRBuilder<>(*context))
 {
+	#if LLVM_VERSION_MAJOR >= 21
+	module->setTargetTriple(llvm::Triple(LLVM_DEFAULT_TARGET_TRIPLE));
+	#else
 	module->setTargetTriple(LLVM_DEFAULT_TARGET_TRIPLE);
+	#endif
 	module->setDataLayout(JITGlobals::get()->getDataLayout());
 	if (config.getOptimization().getFMF() == Optimization::FMF::FastMath)
 		builder->setFastMathFlags(llvm::FastMathFlags::getFast());
