@@ -17,7 +17,8 @@
         packages = rec {
           llvm_19 = pkgs.callPackage ./package.nix {};
           llvm_20 = pkgs.callPackage ./package.nix {libllvm = pkgs.llvmPackages_20.libllvm;};
-          default = llvm_20;
+          llvm_21 = pkgs.callPackage ./package.nix {libllvm = pkgs.llvmPackages_21.libllvm;};
+          default = llvm_21;
         };
 
         formatter = pkgs.alejandra;
