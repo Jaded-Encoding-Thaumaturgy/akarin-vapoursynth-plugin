@@ -940,6 +940,32 @@ void JITBuilder::optimize(const rr::Config &cfg)
 	pb.crossRegisterProxies(lam, fam, cgam, mam);
 
 	llvm::ModulePassManager pm;
+
+#if LLVM_VERSION_MAJOR >= 16
+	llvm::OptimizationLevel level;
+	switch(cfg.getOptimization().getLevel())
+	{
+	case rr::Optimization::Level::None: level = llvm::OptimizationLevel::O0; break;
+	case rr::Optimization::Level::Less: level = llvm::OptimizationLevel::O1; break;
+	case rr::Optimization::Level::Default: level = llvm::OptimizationLevel::O2; break;
+	case rr::Optimization::Level::Aggressive: level = llvm::OptimizationLevel::O3; break;
+	default: UNREACHABLE("Unknown Optimization Level %d", int(cfg.getOptimization().getLevel()));
+	}
+
+	if(cfg.getOptimization().getFMF() == Optimization::FMF::FastMath)
+	{
+		for(auto &F : *module)
+		{
+			F.addFnAttr("no-nans-fp-math", "true");
+			F.addFnAttr("no-infs-fp-math", "true");
+			F.addFnAttr("no-signed-zeros-fp-math", "true");
+			F.addFnAttr("unsafe-fp-math", "true");
+			F.addFnAttr("approx-func-fp-math", "true");
+		}
+	}
+
+	pm = pb.buildPerModuleDefaultPipeline(level);
+#else
 	llvm::FunctionPassManager fpm;
 
 	for(auto pass : cfg.getOptimization().getPasses())
@@ -969,6 +995,7 @@ void JITBuilder::optimize(const rr::Config &cfg)
 	{
 		pm.addPass(llvm::createModuleToFunctionPassAdaptor(std::move(fpm)));
 	}
+#endif
 
 	pm.run(*module, mam);
 }
