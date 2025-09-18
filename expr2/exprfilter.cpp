@@ -493,7 +493,6 @@ class Compiler {
         std::unique_ptr<ftype2> Pow;
     };
     rr::RValue<FloatV> Exp_(rr::RValue<FloatV>);
-    rr::RValue<FloatV> Log_(rr::RValue<FloatV>);
     rr::RValue<FloatV> SinCos_(rr::RValue<FloatV>, bool issin);
     rr::RValue<FloatV> FP16To32(rr::RValue<UShortV>);
     rr::RValue<UShortV> FP32To16(rr::RValue<FloatV>);
@@ -588,51 +587,6 @@ rr::RValue<typename Compiler<lanes>::FloatV> Compiler<lanes>::Exp_(rr::RValue<ty
     emm0 = emm0 + IntV(0x7f);
     emm0 = emm0 << 23;
     x = y * As<FloatV>(emm0);
-    return x;
-}
-
-template<int lanes>
-rr::RValue<typename Compiler<lanes>::FloatV> Compiler<lanes>::Log_(rr::RValue<typename Compiler<lanes>::FloatV> x_)
-{
-    FloatV x = x_;
-    using namespace rr;
-    const uint32_t min_norm_pos = 0x00800000, inv_mant_mask = ~0x7F800000;
-    const float float_half = 0.5f, sqrt_1_2 = 0.707106781186547524f, log_p0 = 7.0376836292E-2f, log_p1 = -1.1514610310E-1f,
-          log_p2 = 1.1676998740E-1f, log_p3 = -1.2420140846E-1f, log_p4 = +1.4249322787E-1f, log_p5 = -1.6668057665E-1f,
-          log_p6 = +2.0000714765E-1f, log_p7 = -2.4999993993E-1f, log_p8 = +3.3333331174E-1f, log_q2 = 0.693359375f,
-          log_q1 = -2.12194440e-4f;
-    const float zero = 0.0f, one = 1.0f;
-    IntV invalid_mask = CmpLE(x, FloatV(zero));
-    x = Max(x, As<FloatV>(IntV(min_norm_pos)));
-    IntV emm0i = As<IntV>(x) >> 23;
-    x = As<FloatV>(As<IntV>(x) & IntV(inv_mant_mask));
-    x = As<FloatV>(As<IntV>(x) | As<IntV>(FloatV(float_half)));
-    emm0i = emm0i - IntV(0x7f);
-    FloatV emm0 = FloatV(emm0i);
-    emm0 = emm0 + FloatV(one);
-    IntV mask = CmpLT(x, FloatV(sqrt_1_2));
-    FloatV etmp = As<FloatV>(mask & As<IntV>(x));
-    x = x - FloatV(one);
-    FloatV maskf = As<FloatV>(mask & As<IntV>(FloatV(one)));
-    emm0 = emm0 - maskf;
-    x = x + etmp;
-    FloatV z = x * x;
-    FloatV y = FloatV(log_p0);
-    y = FMA(y, x, FloatV(log_p1));
-    y = FMA(y, x, FloatV(log_p2));
-    y = FMA(y, x, FloatV(log_p3));
-    y = FMA(y, x, FloatV(log_p4));
-    y = FMA(y, x, FloatV(log_p5));
-    y = FMA(y, x, FloatV(log_p6));
-    y = FMA(y, x, FloatV(log_p7));
-    y = FMA(y, x, FloatV(log_p8));
-    y = y * x;
-    y = y * z;
-    y = FMA(emm0, FloatV(log_q1), y);
-    y = FMA(z, FloatV(-float_half), y);
-    x = x + y;
-    x = FMA(emm0, FloatV(log_q2), x);
-    x = As<FloatV>(invalid_mask | As<IntV>(x));
     return x;
 }
 
@@ -1304,14 +1258,14 @@ typename Compiler<lanes>::Helper Compiler<lanes>::buildHelpers(rr::Module &mod)
     h.Log->setPure();
     {
         FloatV x = h.Sin->template Arg<0>();
-        Return(Log_(x));
+        Return(Log(x));
     }
     h.Pow = std::make_unique<ftype2>(mod, "vpow");
     h.Pow->setPure();
     {
         FloatV x = h.Pow->template Arg<0>();
         FloatV y = h.Pow->template Arg<1>();
-        Return(h.Exp->Call(h.Log->Call(x) * y));
+        Return(BuiltinPow(x, y));
     }
 
     return h;
