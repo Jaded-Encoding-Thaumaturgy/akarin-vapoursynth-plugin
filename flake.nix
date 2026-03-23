@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -15,10 +15,10 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in {
         packages = rec {
-          llvm_19 = pkgs.callPackage ./package.nix {};
           llvm_20 = pkgs.callPackage ./package.nix {libllvm = pkgs.llvmPackages_20.libllvm;};
           llvm_21 = pkgs.callPackage ./package.nix {libllvm = pkgs.llvmPackages_21.libllvm;};
-          default = llvm_21;
+          llvm_22 = pkgs.callPackage ./package.nix {libllvm = pkgs.llvmPackages_22.libllvm;};
+          default = llvm_22;
         };
 
         formatter = pkgs.alejandra;
