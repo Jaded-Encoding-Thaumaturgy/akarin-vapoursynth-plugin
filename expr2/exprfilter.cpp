@@ -366,7 +366,7 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
         float f = 0;
         const size_t len = token.size();
 
-        auto resultl = std::from_chars(token.c_str(), token.c_str() + len, l);
+        auto resultl = std::from_chars(token.c_str(), token.c_str() + len, l, 0);
         if (resultl.ec == std::errc()) {
             pos = std::distance(token.c_str(), resultl.ptr);
         }
