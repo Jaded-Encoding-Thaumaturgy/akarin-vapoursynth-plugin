@@ -1,6 +1,6 @@
 project('Plugin', 'c', 'cpp',
   default_options: ['buildtype=release', 'b_ndebug=if-release', 'c_std=c99', 'cpp_std=c++20'],
-  meson_version: '>=0.48.0',
+  meson_version: '>=0.64.0',
   version: '1.2.0'
 )
 
@@ -112,13 +112,21 @@ endif
 sources += sources_banding
 sources += sources_text
 
-vapoursynth_dep = dependency('vapoursynth').partial_dependency(compile_args: true, includes: true)
+py = import('python').find_installation(pure: false)
+
+r = run_command(
+  py,
+  '-c',
+  'import vapoursynth as vs; print(vs.get_include())',
+  check: true,
+)
+inc_vs = include_directories(r.stdout().strip())
+incdir += inc_vs
 
 shared_module('akarin', sources,
-  dependencies: deps + [ vapoursynth_dep, version_h ],
+  dependencies: deps + [ version_h ],
   link_with: libs,
-  install: true,
+  install: false,
   include_directories: incdir,
-  install_dir: join_paths(vapoursynth_dep.get_pkgconfig_variable('libdir'), 'vapoursynth'),
   gnu_symbol_visibility: 'hidden'
 )

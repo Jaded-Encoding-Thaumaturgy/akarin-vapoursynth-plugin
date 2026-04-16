@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.2
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
@@ -37,60 +37,72 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
-    permissions:
-      attestations: write
-      contents: read
-      id-token: write
     defaults:
       run:
         shell: msys2 {0}
-    strategy:
-      fail-fast: false
-      matrix:
-        buildtype: [debugoptimized, release]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.2
 
       - uses: msys2/setup-msys2@v2.31.0
         with:
-          msystem: ucrt64
+          msystem: CLANG64
           update: true
           pacboy: >-
-            gcc:p
+            toolchain:p
             meson:p
             ninja:p
-            pkg-config:p
-            llvm:p
+            pkgconf:p
             libxml2:p
-            vapoursynth:p
+            7zip:p
+            uv:p
 
       - name: Configure and build
-        run: |
-          meson setup builddir --buildtype ${{ matrix.buildtype }} --prefer-static --default-library=static -Dcpp_link_args=-static
-          meson compile -C builddir
-
-      - name: Rename DLL
-        run: mv builddir/libakarin.dll builddir/akarin.dll
-
-      - name: Attest build provenance
-        if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v2.4.0
-        with:
-          subject-path: builddir/akarin.dll
+        env:
+          MESON_ARGS: >-
+            --buildtype release
+            --prefer-static
+            --default-library=static
+            -Dcpp_link_args=-static
+        run: uv build --wheel --verbose
 
       # HACK: only necessary for `libzstd.dll` for LLVM 17 and above.
-      - name: Copy dependencies
-        run: ldd builddir/akarin.dll | grep -vi '/windows' | grep -v 'VSScript' | awk '{print $3}' | xargs -l1 cp -t builddir
+      - name: Repair Wheel (Copy dependencies)
+        run: |
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          DLL_PATH=$(uvx delvewheel show "$WHEEL_FILE" --add-path /clang64/bin --include libzstd.dll | grep -oP '\(\K[^)]+')
+
+          if [ -z "$DLL_PATH" ]; then
+            echo "Error: Could not find libzstd.dll path via delvewheel."
+            exit 1
+          fi
+
+          echo "Found DLL at: $DLL_PATH"
+          echo "Targeting wheel: $WHEEL_FILE"
+
+          mkdir -p wheel_contents
+          7z x "$WHEEL_FILE" -owheel_contents
+
+          TARGET_DIR="wheel_contents/vapoursynth/plugins/akarin"
+
+          if [ -d "$TARGET_DIR" ]; then
+            cp "$DLL_PATH" "$TARGET_DIR/"
+            echo "Successfully injected libzstd.dll into $TARGET_DIR"
+          else
+            echo "Error: Target directory $TARGET_DIR not found in wheel."
+            exit 1
+          fi
+
+          rm "$WHEEL_FILE"
+          cd wheel_contents
+          7z a -tzip "../$WHEEL_FILE" *
+          cd ..
+
+          rm -rf wheel_contents
+          echo "Wheel successfully rebuilt without delvewheel init-patch."
 
       - name: Upload
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.1
         with:
-          name: akarin-win64-${{ matrix.buildtype }}
           path: |
-            builddir/akarin.dll
-            builddir/libzstd.dll
-
-      - name: Dump Meson logs
-        if: failure()
-        run: cat builddir/meson-logs/meson-log.txt builddir/compile_commands.json
+            dist/*.whl
