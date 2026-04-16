@@ -1080,14 +1080,17 @@ Value *Nucleus::createMaskedLoad(Value *ptr, Type *elTy, Value *mask, unsigned i
 
 	auto numEls = llvm::cast<llvm::FixedVectorType>(V(mask)->getType())->getNumElements();
 	auto i1Ty = llvm::Type::getInt1Ty(*jit->context);
-	auto i32Ty = llvm::Type::getInt32Ty(*jit->context);
 	auto elVecTy = llvm::VectorType::get(T(elTy), numEls, false);
 	auto elVecPtrTy = elVecTy->getPointerTo();
 	auto i8Mask = jit->builder->CreateIntCast(V(mask), llvm::VectorType::get(i1Ty, numEls, false), false);  // vec<int, int, ...> -> vec<bool, bool, ...>
 	auto passthrough = zeroMaskedLanes ? llvm::Constant::getNullValue(elVecTy) : llvm::UndefValue::get(elVecTy);
-	auto align = llvm::ConstantInt::get(i32Ty, alignment);
 	auto func = llvm::Intrinsic::getOrInsertDeclaration(jit->module.get(), llvm::Intrinsic::masked_load, { elVecTy, elVecPtrTy });
-	return V(jit->builder->CreateCall(func, { V(ptr), align, i8Mask, passthrough }));
+	auto *call = jit->builder->CreateCall(func, { V(ptr), i8Mask, passthrough });
+	if(alignment != 0)
+	{
+		call->addParamAttr(0, llvm::Attribute::getWithAlignment(*jit->context, llvm::Align(alignment)));
+	}
+	return V(call);
 }
 
 void Nucleus::createMaskedStore(Value *ptr, Value *val, Value *mask, unsigned int alignment)
@@ -1104,9 +1107,12 @@ void Nucleus::createMaskedStore(Value *ptr, Value *val, Value *mask, unsigned in
 	auto elVecTy = V(val)->getType();
 	auto elVecPtrTy = elVecTy->getPointerTo();
 	auto i1Mask = jit->builder->CreateIntCast(V(mask), llvm::VectorType::get(i1Ty, numEls, false), false);  // vec<int, int, ...> -> vec<bool, bool, ...>
-	auto align = llvm::ConstantInt::get(i32Ty, alignment);
 	auto func = llvm::Intrinsic::getOrInsertDeclaration(jit->module.get(), llvm::Intrinsic::masked_store, { elVecTy, elVecPtrTy });
-	jit->builder->CreateCall(func, { V(val), V(ptr), align, i1Mask });
+	auto *call = jit->builder->CreateCall(func, { V(val), V(ptr), i1Mask });
+	if(alignment != 0)
+	{
+		call->addParamAttr(1, llvm::Attribute::getWithAlignment(*jit->context, llvm::Align(alignment)));
+	}
 
 	if(__has_feature(memory_sanitizer) && !REACTOR_ENABLE_MEMORY_SANITIZER_INSTRUMENTATION)
 	{
@@ -1147,10 +1153,9 @@ static llvm::Value *createGather(llvm::Value *base, llvm::Type *elTy, llvm::Valu
 
 	auto numEls = llvm::cast<llvm::FixedVectorType>(mask->getType())->getNumElements();
 	auto i1Ty = llvm::Type::getInt1Ty(*jit->context);
-	auto i32Ty = llvm::Type::getInt32Ty(*jit->context);
 	auto i8Ty = llvm::Type::getInt8Ty(*jit->context);
-	auto i8PtrTy = i8Ty->getPointerTo();
-	auto elPtrTy = elTy->getPointerTo();
+	auto i8PtrTy = llvm::PointerType::get(i8Ty, 0);
+	auto elPtrTy = llvm::PointerType::get(elTy, 0);
 	auto elVecTy = llvm::VectorType::get(elTy, numEls, false);
 	auto elPtrVecTy = llvm::VectorType::get(elPtrTy, numEls, false);
 	auto i8Base = jit->builder->CreatePointerCast(base, i8PtrTy);
@@ -1161,9 +1166,13 @@ static llvm::Value *createGather(llvm::Value *base, llvm::Type *elTy, llvm::Valu
 
 	if(!__has_feature(memory_sanitizer))
 	{
-		auto align = llvm::ConstantInt::get(i32Ty, alignment);
 		auto func = llvm::Intrinsic::getOrInsertDeclaration(jit->module.get(), llvm::Intrinsic::masked_gather, { elVecTy, elPtrVecTy });
-		return jit->builder->CreateCall(func, { elPtrs, align, i1Mask, passthrough });
+		auto *call = jit->builder->CreateCall(func, { elPtrs, i1Mask, passthrough });
+		if(alignment != 0)
+		{
+			call->addParamAttr(0, llvm::Attribute::getWithAlignment(*jit->context, llvm::Align(alignment)));
+		}
+		return call;
 	}
 	else  // __has_feature(memory_sanitizer)
 	{
@@ -1241,9 +1250,12 @@ static void createScatter(llvm::Value *base, llvm::Value *val, llvm::Value *offs
 
 	if(!__has_feature(memory_sanitizer))
 	{
-		auto align = llvm::ConstantInt::get(i32Ty, alignment);
 		auto func = llvm::Intrinsic::getOrInsertDeclaration(jit->module.get(), llvm::Intrinsic::masked_scatter, { elVecTy, elPtrVecTy });
-		jit->builder->CreateCall(func, { val, elPtrs, align, i1Mask });
+		auto *call = jit->builder->CreateCall(func, { val, elPtrs, i1Mask });
+		if(alignment != 0)
+		{
+			call->addParamAttr(1, llvm::Attribute::getWithAlignment(*jit->context, llvm::Align(alignment)));
+		}
 	}
 	else  // __has_feature(memory_sanitizer)
 	{
