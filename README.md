@@ -211,8 +211,8 @@ pip install vapoursynth-akarin
    ```
 
 > [!NOTE]
-> When building with LLVM 17 or newer, the plugin will depend on `libzstd.dll`.
-> You may need to manually copy this DLL from your MSYS2 installation (`/clang64/bin/libzstd.dll`) to the plugin directory if it is not already in your PATH.
+> When building with LLVM 17 or newer, the plugin depends on `libzstd.dll`.
+> The wheel build process (via `uv build`) automatically bundles this DLL from your MSYS2 environment if it is found in your PATH.
 
 ### Linux & macOS
 

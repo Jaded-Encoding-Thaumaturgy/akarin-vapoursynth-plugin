@@ -86,41 +86,6 @@ jobs:
             -Dcpp_link_args=-static
         run: uv build --wheel --verbose
 
-      # HACK: only necessary for `libzstd.dll` for LLVM 17 and above.
-      - name: Repair Wheel (Copy dependencies)
-        run: |
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
-          DLL_PATH=$(uvx delvewheel show "$WHEEL_FILE" --add-path /clang64/bin --include libzstd.dll | grep -oP '\(\K[^)]+')
-
-          if [ -z "$DLL_PATH" ]; then
-            echo "Error: Could not find libzstd.dll path via delvewheel."
-            exit 1
-          fi
-
-          echo "Found DLL at: $DLL_PATH"
-          echo "Targeting wheel: $WHEEL_FILE"
-
-          mkdir -p wheel_contents
-          7z x "$WHEEL_FILE" -owheel_contents
-
-          TARGET_DIR="wheel_contents/vapoursynth/plugins/akarin"
-
-          if [ -d "$TARGET_DIR" ]; then
-            cp "$DLL_PATH" "$TARGET_DIR/"
-            echo "Successfully injected libzstd.dll into $TARGET_DIR"
-          else
-            echo "Error: Target directory $TARGET_DIR not found in wheel."
-            exit 1
-          fi
-
-          rm "$WHEEL_FILE"
-          cd wheel_contents
-          7z a -tzip "../$WHEEL_FILE" *
-          cd ..
-
-          rm -rf wheel_contents
-          echo "Wheel successfully rebuilt without delvewheel init-patch."
-
       - name: Upload
         uses: actions/upload-artifact@v7.0.1
         with:
