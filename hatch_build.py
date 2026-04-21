@@ -28,7 +28,7 @@ class CustomHook(BuildHookInterface[Any]):
 
         self.target_dir.mkdir(parents=True, exist_ok=True)
         for file_path in self.source_dir.glob("*"):
-            if file_path.is_file() and file_path.suffix in [".dll", ".so", "dylib"]:
+            if file_path.is_file() and file_path.suffix in [".dll", ".so", ".dylib"]:
                 shutil.copy2(file_path, self.target_dir)
 
     def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:
