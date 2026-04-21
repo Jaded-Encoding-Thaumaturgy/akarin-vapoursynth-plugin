@@ -33,16 +33,14 @@ jobs:
           name: vs-nix-overlay
 
       - name: Build
-        run: nix develop -L .#llvm_${{ matrix.llvm }} -c uv build --wheel --out-dir dist_llvm${{ matrix.llvm }}
+        run: nix build -L .#llvm_${{ matrix.llvm }}.dist
 
       - name: Upload
         uses: actions/upload-artifact@v7.0.1
         if: ${{ matrix.llvm == 22 }}
         with:
           name: wheel-${{ matrix.os }}
-          path: |
-            dist_llvm22/*.whl
-
+          path: result-dist/*.whl
 
   build-windows:
     runs-on: windows-latest
