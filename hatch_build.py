@@ -31,5 +31,22 @@ class CustomHook(BuildHookInterface[Any]):
             if file_path.is_file() and file_path.suffix in [".dll", ".so", ".dylib"]:
                 shutil.copy2(file_path, self.target_dir)
 
+        if sys.platform == "win32":
+            dll_path = shutil.which("libzstd.dll")
+
+            if not dll_path:
+                for prefix in [os.getenv("MSYSTEM_PREFIX"), "C:/msys64/clang64", "C:/msys64/ucrt64"]:
+                    if not prefix:
+                        continue
+                    if (candidate := Path(prefix) / "bin" / "libzstd.dll").exists():
+                        dll_path = candidate
+                        break
+
+            if dll_path:
+                shutil.copy2(dll_path, self.target_dir)
+                print(f"Bundled dependency: {dll_path}", file=sys.stderr)
+            else:
+                print("Warning: Could not find libzstd.dll in PATH or common MSYS2 locations.", file=sys.stderr)
+
     def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:
         shutil.rmtree(self.target_dir.parent, ignore_errors=True)
