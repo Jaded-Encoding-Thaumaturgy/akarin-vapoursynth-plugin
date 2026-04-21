@@ -1,8 +1,6 @@
-Plugin akarin
-=============
+# Plugin akarin
 
-CAMBI
------
+## CAMBI
 `akarin.Cambi(clip clip[, int window_size = 63, float topk = 0.6, float tvi_threshold = 0.019, bint scores = False, float scaling = 1.0/window_size])`
 
 Computes the CAMBI banding score as `CAMBI` frame property. Unlike [VapourSynth-VMAF](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-VMAF), this filter is online (no need to batch process the whole video) and provides raw cambi scores (when `scores == True`).
@@ -14,8 +12,7 @@ Computes the CAMBI banding score as `CAMBI` frame property. Unlike [VapourSynth-
 - `scores` (default: False): if True, for scale i (0 <= i < 5), the GRAYS c-score frame will be stored as frame property `"CAMBI_SCALE%d" % i`.
 - `scaling`: scaling factor used to normalize the c-scores for each scale returned when `scores=True`.
 
-DLVFX
------
+## DLVFX
 `akarin.DLVFX(clip clip, int op[, float scale=1, float strength=0, int output_depth=clip.format.bits_per_sample, int num_streams=1])`
 
 There are three operation modes ([official docs](https://docs.nvidia.com/deeplearning/maxine/pdf/vfx-sdk-programming-guide.pdf)):
@@ -34,9 +31,7 @@ Usage Notes:
 This filter requires appropriate [Video Effects library (v0.6 beta)](https://www.nvidia.com/en-us/geforce/broadcasting/broadcast-sdk/resources/) to be installed. (This library is too large to be bundled with the plugin.)
 This filter also requires RTX-capable NVidia GPU to run.
 
-DLISR
------
-
+## DLISR
 `akarin.DLISR(clip clip, [, int scale=2])`
 
 This filter will use Nvidia [NGX Technology](https://developer.nvidia.com/rtx/ngx) DLISR DNN to scale up an input clip.
@@ -49,9 +44,7 @@ This filter requires RTX-capable NVidia GPU to run.
 Warning: <br>
 Due to peculiar nature of its implementation, this filter only works if it is the *only* CUDA filter in your script and it will always automatically choose the GPU to use. Please make sure to use CPU versions of other filters if you plan to use `DLISR` in the script (note that it's fairly computation extensive, so using other GPU filters will likely only slow things down anyway.)
 
-Expr
-----
-
+## Expr
 `akarin.Expr(clip[] clips, string[] expr[, int format, int opt=0, int boundary=0])`
 
 This works just like [`std.Expr`](http://www.vapoursynth.com/doc/functions/expr.html) (esp. with the same SIMD JIT support on x86 hosts), with the following additions:
@@ -85,9 +78,7 @@ This works just like [`std.Expr`](http://www.vapoursynth.com/doc/functions/expr.
   - octals: 023 (however, invalid octal numbers will be parsed as floating points, so "09" will be parsed the same as "9.0")
 - (\*) Support **arbitrary** number of input clips. Use `srcN` to access the `N`-th input clip (i.e. `src0` is equivalent to `x`, `src25` is equivalent to `w`, etc.) There is no hardcoded limit on the number of input clips, however VS might not be able to handle too many. Up to `255` input clips have been tested.
 
-Select
-----
-
+## Select
 `akarin.Select(clip[] clip_src, clip[] prop_src, string[] expr)`
 
 For each frame evaluate the expression `expr` where clip variables (`a-z`) references the corresponding frame from `prop_src`.
@@ -108,9 +99,7 @@ x = core.akarin.Select([src, flt], prop_clip, 'x._Combed 1 0 ?') # when x._Combe
 ```
 
 
-PropExpr
-----
-
+## PropExpr
 `akarin.PropExpr(clip[] clips, dict=lambda: dict(key=val))`
 
 `PropExpr` is a filter to programmatically compute numeric frame properties. Given a list of clips, it will return the first clip after modifying its frame properties as specified by the dict argument. The expressions have access to the frame property of all the clips.
@@ -134,9 +123,7 @@ Some examples:
 Note: this peculiar form of specifying the properties is to workaround a limitation of the VS API.
 
 
-Text
-----
-
+## Text
 Text is an enhanced `text.Text`:
 - It takes Python format string so that the text for each frame can be based on frame properties. No need to resort to `std.FrameEval` and dynamic `text.Text` filter creation. But note this filter by itself does not support any computation on the frame properties, so if you want to display, say, `x.Prop1 * 10 + y.Prop2`, you will have to use `PropExpr` before hand to compute the value (e.g. `c.akarin.PropExpr(lambda: dict(PropToShow="x.Prop1 10 * y.Prop2 +")).akarin.Text("{PropToShow}")`).
 - It also support saving the formated string as a frame property (via `prop` argument), so that you can pass the formatted string to other filters (e.g. assrender).
@@ -162,9 +149,7 @@ The filter supports formatting int/float scalar or arrays, data (shown as string
 `vspipe` will determine whether to overlay the OSD when the script is run under vspipe. The default `False` means the OSD will only be visible when the script is run in previewers, not when encoding with vspipe. The check is done by checking the executable name of the current process for "vspipe" (Unix) or "vspipe.exe" (Windows). This setting does not affect `prop`.
 
 
-Version
-----
-
+## Version
 `akarin.Version()`
 
 Use this function to query the version and features of the plugin. It will return a Python dict with the following keys:
@@ -201,21 +186,36 @@ When reporting issues, please also try limiting the ISA to a lower level (at lea
 If the `opt` argument is set to 1 (default 0), then it will activate an integer optimization mode, where intermediate values are computed with 32-bit integer for as long as possible. You have to make sure the intermediate value is always representable with int32 to use this optimization (as arithmetics will warp around in this mode.)
 
 
-Building
---------
-To build the plugin, you will need LLVM 19-20 installed (on Windows, you need to build your own) and have llvm-config executable in your PATH, then run:
-```
-meson build
-ninja -C build install
+## Installation
+
+```bash
+pip install vapoursynth-akarin
 ```
 
-Example LLVM build procedure on windows:
-```
-git clone --depth 1 https://github.com/llvm/llvm-project.git --branch release/20.x
-cd llvm-project
-mkdir build
-cd build
-cmake -A x64 -Thost=x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="" -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_USE_CRT_RELEASE=MT ../llvm
-cmake --build --config Release
-cmake --install ../install
+## Building
+
+### Windows
+
+**Requirements:**
+
+- [MSYS2](https://www.msys2.org/)
+
+1. Open the **MSYS2 CLANG64** terminal.
+2. Install the necessary build tools and dependencies:
+   ```bash
+   pacman -S mingw-w64-clang-x86_64-{toolchain,meson,ninja,pkgconf,libxml2,uv}
+   ```
+3. Build the wheel:
+   ```bash
+   uv build --wheel
+   ```
+
+> [!NOTE]
+> When building with LLVM 17 or newer, the plugin will depend on `libzstd.dll`.
+> You may need to manually copy this DLL from your MSYS2 installation (`/clang64/bin/libzstd.dll`) to the plugin directory if it is not already in your PATH.
+
+### Linux & macOS
+
+```bash
+nix build -L .#llvm_22.dist
 ```
