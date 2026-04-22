@@ -20,7 +20,6 @@
 #define USE_EXPR_CACHE
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <cctype>
 #include <clocale>
@@ -44,6 +43,18 @@
 
 #include "Module.hpp"
 #include "Debug.hpp"
+
+#ifdef USE_BOOST_CHARCONV
+
+#include <boost/charconv.hpp>
+using boost::charconv::from_chars;
+
+#else
+
+#include <charconv>
+using std::from_chars;
+
+#endif
 
 namespace {
 
@@ -288,7 +299,7 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
             return name[0] >= 'x' ? name[0] - 'x' : name[0] - 'a' + 3;
         int idx = -1;
 
-        auto result = std::from_chars(name.c_str() + clipNamePrefix.size(), name.c_str() + name.length(), idx);
+        auto result = from_chars(name.c_str() + clipNamePrefix.size(), name.c_str() + name.length(), idx);
         if (result.ec != std::errc()) {
             throw std::runtime_error("invalid clip name: " + name);
         }
@@ -309,7 +320,7 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
         size_t prefix = token[1] == 'u' ? 3 : 4;
         int idx = -1;
 
-        auto result = std::from_chars(token.c_str() + prefix, token.c_str() + token.length(), idx);
+        auto result = from_chars(token.c_str() + prefix, token.c_str() + token.length(), idx);
         if (result.ec != std::errc()) {
             // ...
         }
@@ -330,7 +341,7 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
         size_t prefix = token[3] == 's' ? 7 : 6;
         int idx = -1;
 
-        auto result = std::from_chars(token.c_str() + prefix, token.c_str() + token.length(), idx);
+        auto result = from_chars(token.c_str() + prefix, token.c_str() + token.length(), idx);
         if (result.ec != std::errc()) {
             // ...
         }
@@ -366,7 +377,7 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
         float f = 0;
         const size_t len = token.size();
 
-        auto resultl = std::from_chars(token.c_str(), token.c_str() + len, l, 0);
+        auto resultl = from_chars(token.c_str(), token.c_str() + len, l, 0);
         if (resultl.ec == std::errc()) {
             pos = std::distance(token.c_str(), resultl.ptr);
         }
@@ -377,7 +388,7 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
             return { ExprOpType::CONSTANTF, (float)l };
         }
 
-        auto resultf = std::from_chars(token.c_str(), token.c_str() + len, f);
+        auto resultf = from_chars(token.c_str(), token.c_str() + len, f);
         if (resultf.ec == std::errc()) {
             pos = std::distance(token.c_str(), resultf.ptr);
         }

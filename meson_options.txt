@@ -3,3 +3,6 @@ option('asmjit', type: 'boolean', value: false,
 
 option('static-llvm', type: 'boolean', value: true,
        description: 'Whether to statically link LLVM')
+
+option('boost-charconv', type: 'boolean', value: false,
+       description: 'Whether to use boost\'s charconv')

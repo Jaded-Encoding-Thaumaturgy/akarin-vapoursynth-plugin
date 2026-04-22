@@ -15,6 +15,7 @@ version_h = declare_dependency(
 is_windows = target_machine.system() == 'windows' or target_machine.system() == 'cygwin'
 use_asmjit = get_option('asmjit')
 static_llvm = get_option('static-llvm')
+boost_charconv = get_option('boost-charconv')
 
 sources_expr = [
   # expr
@@ -96,6 +97,11 @@ else
     # HACK: work around multiple definition of `llvm::getTypeName<llvm::LICMPass>()::Name`.
     add_project_link_arguments('-Wl,--allow-multiple-definition', language: 'cpp')
   endif
+endif
+
+if boost_charconv
+  add_project_arguments('-DUSE_BOOST_CHARCONV', language: 'cpp')
+  deps += dependency('boost', modules: ['charconv'], static: get_option('prefer_static'))  # boost dependencies do not respect prefer_static https://github.com/mesonbuild/meson/issues/15458
 endif
 
 libs = []
