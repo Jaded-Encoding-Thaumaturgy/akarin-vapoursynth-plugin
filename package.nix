@@ -11,7 +11,9 @@
   vapoursynth,
   libllvm,
   libxml2,
+  boost,
   vapoursynth-lib ? builtins.head vapoursynth.buildInputs,
+  withBoostCharconv ? stdenv.hostPlatform.isDarwin,
 }:
 buildPythonPackage {
   pname = "vapoursynth-akarin";
@@ -75,16 +77,19 @@ buildPythonPackage {
     vapoursynth
   ];
 
+  env.MESON_ARGS = lib.optionalString withBoostCharconv "-Dboost-charconv=true";
+
   buildInputs =
     [
       libllvm
       libxml2.out
       vapoursynth-lib
     ]
+    ++ lib.optional withBoostCharconv boost
     # `std::to_chars()` for floating-point types was introduced in macOS 13.3.
     # But then `darwinMinVersionHook "13.0"` yields "error: 'from_chars' is
     # unavailable: introduced in macOS 26.0".
-    ++ lib.optional stdenv.hostPlatform.isDarwin (darwinMinVersionHook "26.0");
+    ++ lib.optional (stdenv.hostPlatform.isDarwin && !withBoostCharconv) (darwinMinVersionHook "26.0");
 
   dependencies = [
     vapoursynth
