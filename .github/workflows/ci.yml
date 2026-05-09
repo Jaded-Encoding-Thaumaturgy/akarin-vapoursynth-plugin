@@ -22,19 +22,23 @@ jobs:
             llvm: 21
           - target: glibc
             llvm: 22
-            artifact: "wheel-linux"
+            artifact: "wheel-manylinux-x86-64"
+          - target: glibc arm
+            llvm: 22
+            artifact: "wheel-manylinux-aarch64"
+            os: ubuntu-22.04-arm
           - target: musl
             llvm: 22
-            artifact: "wheel-musllinux"
+            artifact: "wheel-musllinux-x86-64"
             container: alpine:edge
 
     name: Build ${{ matrix.target }} llvm=${{ matrix.llvm }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os  || 'ubuntu-22.04' }}
     container: ${{ matrix.container }}
 
     steps:
       - name: Install LLVM (glibc)
-        if: matrix.target == 'glibc'
+        if: startsWith(matrix.target, 'glibc')
         run: |
           wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
           chmod +x /tmp/llvm.sh
@@ -82,10 +86,10 @@ jobs:
             llvm: 21
           - target: macos-26
             llvm: 22
-            artifact: "wheel-macos"
+            artifact: "wheel-macos-arm64"
           - target: macos-26-intel
             llvm: 22
-            artifact: "wheel-macos-intel"
+            artifact: "wheel-macos-x86_64"
     name: Build ${{ matrix.target }} llvm=${{ matrix.llvm }}
     runs-on: ${{ matrix.target }}
     steps:
