@@ -17,7 +17,7 @@
 }:
 buildPythonPackage {
   pname = "vapoursynth-akarin";
-  version = "1.4.0";
+  version = "1.4.1";
   pyproject = true;
 
   src = lib.fileset.toSource {
