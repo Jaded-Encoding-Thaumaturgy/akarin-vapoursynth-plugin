@@ -323,6 +323,8 @@ struct CustomValue {
     CustomValue(int val, std::string (*fptr)(int)): val(val), fptr(fptr) {}
 };
 
+struct ValidationValue {}; // Accepts format specifications before the property type is known.
+
 struct MissingValue {
     std::string s;
     MissingValue(std::string s): s(s) {}
@@ -353,16 +355,32 @@ template <> struct formatter<CustomValue>: public formatter<int>, formatter<stri
         return formatter<int>::format(p.val, ctx);
     }
 };
-template <> struct formatter<MissingValue>: public formatter<int>, formatter<string_view> {
+template <> struct formatter<ValidationValue> {
+    auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
+        return std::find(ctx.begin(), ctx.end(), '}');
+    }
+
+    template <typename FormatContext>
+    auto format(const ValidationValue &, FormatContext &ctx) -> decltype(ctx.out()) {
+        return ctx.out();
+    }
+};
+template <> struct formatter<MissingValue>: public formatter<int>, formatter<double>, formatter<string_view> {
     bool asString;
+    bool asFloat;
     auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
         auto it = ctx.begin(), end = std::find(it, ctx.end(), '}');
         asString = true;
+        asFloat = false;
         if (it == end) return it;
         if (*(end-1) == 's') {
             return formatter<string_view>::parse(ctx);
         }
         asString = false;
+        char type = *(end-1);
+        asFloat = std::find(it, end, '.') != end || type == 'a' || type == 'A' || type == 'e' || type == 'E' || type == 'f' || type == 'F' || type == 'g' || type == 'G';
+        if (asFloat)
+            return formatter<double>::parse(ctx);
         return formatter<int>::parse(ctx);
     }
 
@@ -370,6 +388,8 @@ template <> struct formatter<MissingValue>: public formatter<int>, formatter<str
     auto format(const MissingValue &p, FormatContext &ctx) -> decltype(ctx.out()) {
         if (asString)
             return formatter<string_view>::format(p.s, ctx);
+        if (asFloat)
+            return formatter<double>::format(0.0, ctx);
         return formatter<int>::format(0, ctx);
     }
 };
@@ -404,7 +424,7 @@ std::vector<PropAccess> checkFormatString(const std::string f) {
             vformat_to(std::back_inserter(null), f, store);
         } catch (fmt::missing_arg &e) {
             std::string id = e.what();
-            store.push_back(fmt::arg(id.c_str(), CustomValue(1.0, matrixToString)));
+            store.push_back(fmt::arg(id.c_str(), ValidationValue()));
             if (std::regex_match(id, match, framePropRe)) {
                 auto clip = match[1].str(), name = match[2].str();
                 int clipi = extractClipId(clip);
