@@ -378,7 +378,10 @@ template <> struct formatter<MissingValue>: public formatter<int>, formatter<dou
         }
         asString = false;
         char type = *(end-1);
-        asFloat = std::find(it, end, '.') != end || type == 'a' || type == 'A' || type == 'e' || type == 'E' || type == 'f' || type == 'F' || type == 'g' || type == 'G';
+        auto precision = std::find(it, end, '.');
+        if (precision == it && precision + 1 != end && (*(precision + 1) == '<' || *(precision + 1) == '>' || *(precision + 1) == '^'))
+            precision = std::find(precision + 2, end, '.'); // Ignore a dot used as the fill character before alignment.
+        asFloat = precision != end || type == 'a' || type == 'A' || type == 'e' || type == 'E' || type == 'f' || type == 'F' || type == 'g' || type == 'G';
         if (asFloat)
             return formatter<double>::parse(ctx);
         return formatter<int>::parse(ctx);
