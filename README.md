@@ -136,6 +136,7 @@ Text is an enhanced `text.Text`:
   - `{N}`: The predefined `N` is the current frame number (if you want to access a frame property named `N`, use the full form `{x.N}` instead.
   - `"Matrix: {x._Matrix}"`: it will show the matrix property in string format (i.e. `Matrix: BT.709`).
   - `"Matrix: {x._Matrix:d}"`: it will show the matrix property as a number.
+  - `"Value: {x.SomeFloat:.4f}"`: it will show a float property with four digits after the decimal point.
   - `"Chroma: {x._ChromaLocation:.>10s}`: it will show the chroma location as a string, right aligned, and padded on the left with '.' (i.e. `Chroma: ......Left`).
 
 The filter supports formatting int/float scalar or arrays, data (shown as string). All the rest are shown as type sepcific placeholders (e.g. `<node>` for a node).
