@@ -48,11 +48,13 @@
 
 #include <boost/charconv.hpp>
 using boost::charconv::from_chars;
+using boost::charconv::chars_format;
 
 #else
 
 #include <charconv>
 using std::from_chars;
+using std::chars_format;
 
 #endif
 
@@ -377,9 +379,26 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
         float f = 0;
         const size_t len = token.size();
 
-        auto resultl = from_chars(token.c_str(), token.c_str() + len, l, 0);
+        // Emulate stol/stod prefix handling
+        int base = 10;
+        size_t prefix = 0;
+        const char* first = token.c_str();
+        const char* last = token.c_str() + len;
+        if (len > 2 && first[0] == '0' && (first[1] == 'x' || first[1] == 'X')) {
+            base = 16;
+            prefix = 2;
+            first += prefix;
+        } else if (len > 1 && first[0] == '0') {
+            base = 8;
+            prefix = 1;
+            first += prefix;
+        }
+
+        auto resultl = from_chars(first, last, l, base);
         if (resultl.ec == std::errc()) {
             pos = std::distance(token.c_str(), resultl.ptr);
+        } else {
+            pos = prefix;
         }
 
         if (pos == len) {
@@ -388,9 +407,20 @@ ExprOp decodeToken(const std::string &token, bool extended = false)
             return { ExprOpType::CONSTANTF, (float)l };
         }
 
-        auto resultf = from_chars(token.c_str(), token.c_str() + len, f);
+        auto fmt = chars_format::general;
+        first = token.c_str();
+        prefix = 0;
+        if (len > 2 && first[0] == '0' && (first[1] == 'x' || first[1] == 'X')) {
+            fmt = chars_format::hex;
+            prefix = 2;
+            first += prefix;
+        }
+
+        auto resultf = from_chars(first, last, f, fmt);
         if (resultf.ec == std::errc()) {
             pos = std::distance(token.c_str(), resultf.ptr);
+        } else {
+            pos = std::max(pos, prefix);
         }
 
         if (pos == len)
