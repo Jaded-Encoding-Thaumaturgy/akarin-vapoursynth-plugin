@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -19,6 +19,10 @@
           llvm_21 = pkgs.python3Packages.callPackage ./package.nix {libllvm = pkgs.llvmPackages_21.libllvm;};
           llvm_22 = pkgs.python3Packages.callPackage ./package.nix {libllvm = pkgs.llvmPackages_22.libllvm;};
           default = llvm_22;
+        };
+
+        devShells.default = pkgs.mkShellNoCC {
+          packages = [pkgs.uv];
         };
 
         formatter = pkgs.alejandra;

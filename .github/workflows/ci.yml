@@ -99,7 +99,7 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
+          nix_path: nixpkgs=channel:nixpkgs-26.05-darwin
 
       - name: Set up Nix cache
         uses: cachix/cachix-action@v17
@@ -111,8 +111,8 @@ jobs:
 
       - name: Repair wheel
         run: |
-          nix shell .#llvm_${{ matrix.llvm }}.dist nixpkgs#uv \
-            --command uvx --from delocate delocate-wheel -v -w dist result-dist/*.whl
+          nix shell .#llvm_${{ matrix.llvm }}.dist \
+            --command nix develop --command uvx --from delocate delocate-wheel -v -w dist result-dist/*.whl
 
       - name: Upload
         uses: actions/upload-artifact@v7.0.1
