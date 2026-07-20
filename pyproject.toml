@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "hatchling>=1.27.0",
+    "hatchling>=1.31.0",
     "vapoursynth>=74",
     "meson==1.11.0",
     "ninja==1.13.0",
@@ -33,7 +33,7 @@ classifiers = [
 ]
 
 [dependency-groups]
-dev = ["hatchling>=1.27.0", "packaging"]
+dev = ["hatchling>=1.31.0", "packaging"]
 
 [project.urls]
 "Source Code" = "https://github.com/Jaded-Encoding-Thaumaturgy/akarin-vapoursynth-plugin"
