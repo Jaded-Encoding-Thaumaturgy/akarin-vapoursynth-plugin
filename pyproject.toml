@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "hatchling>=1.27.0",
-    "vapoursynth>=74",
+    "vapoursynth>=77",
     "meson==1.11.2",
     "ninja==1.13.0",
 ]
@@ -19,7 +19,7 @@ authors = [{ name = "Akarin", email = "i@akarin.info" }]
 maintainers = [
     { name = "Jaded Encoding Thaumaturgy", email = "jaded.encoding.thaumaturgy@gmail.com" },
 ]
-dependencies = ["vapoursynth>=74"]
+dependencies = ["vapoursynth>=77"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
