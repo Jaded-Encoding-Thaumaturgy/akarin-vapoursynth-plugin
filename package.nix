@@ -77,7 +77,11 @@ buildPythonPackage {
     vapoursynth
   ];
 
-  env.MESON_ARGS = lib.optionalString withBoostCharconv "-Dboost-charconv=true";
+  env = lib.optionalAttrs withBoostCharconv {
+    MESON_ARGS = "-Dboost-charconv=true";
+    BOOST_LIBRARYDIR = "${boost.out}/lib";
+    BOOST_INCLUDEDIR = "${boost.dev}/include";
+  };
 
   buildInputs =
     [
