@@ -93,6 +93,11 @@ else
       'asmprinter', 'executionengine', 'target', 'orcjit', 'native',
     ])
 
+  if target_machine.system() == 'linux'
+    # GH-38: allocate JIT code via a named anonymous mmap instead of the heap.
+    add_project_arguments('-DREACTOR_ANONYMOUS_MMAP_NAME=akarin_jit', language: 'cpp')
+  endif
+
   if static_llvm and is_windows
     # HACK: work around multiple definition of `llvm::getTypeName<llvm::LICMPass>()::Name`.
     add_project_link_arguments('-Wl,--allow-multiple-definition', language: 'cpp')
