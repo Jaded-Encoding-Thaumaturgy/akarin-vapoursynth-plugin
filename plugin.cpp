@@ -29,7 +29,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
         "info.akarin.vsplugin",
         "akarin",
         "Akarin's Experimental Filters",
-        VS_MAKE_VERSION(1, 4),
+        VS_MAKE_VERSION(1, 5),
         VAPOURSYNTH_API_VERSION,
         0,
         plugin
