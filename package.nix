@@ -45,7 +45,7 @@ buildPythonPackage {
   postPatch = ''
         substituteInPlace pyproject.toml \
           --replace-fail "meson==1.12.0" "meson" \
-          --replace-fail "ninja==1.13.0" "ninja" \
+          --replace-fail "ninja==1.13.2" "ninja" \
           --replace-fail "vapoursynth>=74" "vapoursynth"
 
         substituteInPlace meson.build \
