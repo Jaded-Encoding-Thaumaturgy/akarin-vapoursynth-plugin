@@ -22,13 +22,15 @@ jobs:
             llvm: 21
           - target: glibc
             llvm: 22
+          - target: glibc
+            llvm: 23
             artifact: "wheel-manylinux-x86-64"
           - target: glibc arm
-            llvm: 22
+            llvm: 23
             artifact: "wheel-manylinux-aarch64"
             os: ubuntu-22.04-arm
           - target: musl
-            llvm: 22
+            llvm: 23
             artifact: "wheel-musllinux-x86-64"
             container: alpine:edge
 
@@ -70,7 +72,7 @@ jobs:
 
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ matrix.llvm == 22 }}
+        if: ${{ matrix.llvm == 23 }}
         with:
           name: ${{ matrix.artifact }}
           path: dist-repaired/*.whl
@@ -86,9 +88,11 @@ jobs:
             llvm: 21
           - target: macos-26
             llvm: 22
+          - target: macos-26
+            llvm: 23
             artifact: "wheel-macos-arm64"
           - target: macos-26-intel
-            llvm: 22
+            llvm: 23
             artifact: "wheel-macos-x86_64"
     name: Build ${{ matrix.target }} llvm=${{ matrix.llvm }}
     runs-on: ${{ matrix.target }}
@@ -116,7 +120,7 @@ jobs:
 
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ matrix.llvm == 22 }}
+        if: ${{ matrix.llvm == 23 }}
         with:
           name: ${{ matrix.artifact }}
           path: dist/*.whl
