@@ -2,7 +2,7 @@
 requires = [
     "hatchling>=1.27.0",
     "vapoursynth>=74",
-    "meson==1.12.0",
+    "meson==1.12.1",
     "ninja==1.13.2",
 ]
 build-backend = "hatchling.build"

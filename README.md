@@ -218,5 +218,5 @@ pip install vapoursynth-akarin
 ### Linux & macOS
 
 ```bash
-nix build -L .#llvm_22.dist
+nix build -L .#llvm_23.dist
 ```

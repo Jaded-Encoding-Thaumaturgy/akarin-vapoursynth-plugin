@@ -1864,7 +1864,7 @@ Value *Nucleus::createConstantVector(const double *constants, Type *type)
 Value *Nucleus::createConstantString(const char *v)
 {
 	// NOTE: Do not call RR_DEBUG_INFO_UPDATE_LOC() here to avoid recursion when called from rr::Printv
-	auto ptr = jit->builder->CreateGlobalStringPtr(v);
+	auto ptr = jit->builder->CreateGlobalString(v);
 	return V(ptr);
 }
 
@@ -3974,7 +3974,7 @@ RValue<Pointer<Byte>> ConstantData(void const *data, size_t size)
 {
 	RR_DEBUG_INFO_UPDATE_LOC();
 	auto str = ::std::string(reinterpret_cast<const char *>(data), size);
-	auto ptr = jit->builder->CreateGlobalStringPtr(str);
+	auto ptr = jit->builder->CreateGlobalString(str);
 	return RValue<Pointer<Byte>>(V(ptr));
 }
 
