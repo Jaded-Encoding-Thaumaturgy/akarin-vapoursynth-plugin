@@ -108,7 +108,8 @@ jobs:
       - name: Set up Nix cache
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
-          name: vs-nix-overlay
+          name: akarin-vapoursynth-plugin
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Build
         run: nix build -L .#llvm_${{ matrix.llvm }}.dist
