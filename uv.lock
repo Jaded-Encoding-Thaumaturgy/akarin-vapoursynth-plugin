@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 
 [[package]]
@@ -65,17 +65,24 @@ wheels = [
 
 [[package]]
 name = "vapoursynth"
-version = "79"
+version = "82"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2d/4d/bb7fcc7f304e7248cf6c83ec0c3c97ee4b4fa2e05bfbbe2a578a9b41fab9/vapoursynth-79.tar.gz", hash = "sha256:01311b79ef22334115f79a78a6d7548bd29f35cc903ee0cea12443d49e142eb1", size = 657038, upload-time = "2026-08-07T08:58:43.96Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/2e/1a5cb192ce26077c5afe9056a11b3a2d936c4e413b4fec5eee74d45bdb01/vapoursynth-82.tar.gz", hash = "sha256:1128316620890ba8e5b69c924a665f98001b2ba4230dadead0f296446ea71843", size = 1140956, upload-time = "2026-11-01T20:09:38.466Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/a3/24c2f637f79f41551c72b6505ba008ba229a1fd7869f102cc77b86ce7bd6/vapoursynth-79-cp312-abi3-macosx_13_0_arm64.whl", hash = "sha256:ea2750319e31d099b4652a4a63f47db2c297c307f7567e3e9352b75158c7b37c", size = 1367869, upload-time = "2026-08-07T08:58:29.308Z" },
-    { url = "https://files.pythonhosted.org/packages/91/09/40354f2a95db5a6462a6ca7d66481bc4970c6d3147c547b1d45b5eb35205/vapoursynth-79-cp312-abi3-macosx_13_0_x86_64.whl", hash = "sha256:64eb7309439407fec0e0f6771c1b6f954d08355c46cf0c56fb55e1ba68bb7f79", size = 4483430, upload-time = "2026-08-07T08:58:31.846Z" },
-    { url = "https://files.pythonhosted.org/packages/39/b5/d329a044564c22beda6b31cd47f1814cbad29e71a77af1b304715614e628/vapoursynth-79-cp312-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:50d031d07b1839ba362cf314e212edb0760c7ca2a7625a051a0bcbf22aaf9d1c", size = 1803612, upload-time = "2026-08-07T08:58:33.366Z" },
-    { url = "https://files.pythonhosted.org/packages/c2/82/a4f5e879ff0bb6722ecbecf01482b0783ed05d42aefa7717e6a6f4f77180/vapoursynth-79-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6f1e37f0ed8eb73e61c3c231fd7f7a0f7acfa893e98d026686e9c81e52c9ce06", size = 4536724, upload-time = "2026-08-07T08:58:35.38Z" },
-    { url = "https://files.pythonhosted.org/packages/b7/6f/1546d68b3eac2e83b48da4f8e5272eaec6360f84c7adbaf4fc25e3bb44c8/vapoursynth-79-cp312-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:a780f425f1f102ddb8dd36bc54743f5747d0e08b7cb93eacce8b55eaeb56d555", size = 2585590, upload-time = "2026-08-07T08:58:37.338Z" },
-    { url = "https://files.pythonhosted.org/packages/82/e7/8ae84da0b7500c5ed30d02b1c90d3a1beb454ef1965e18b803c8224e8aba/vapoursynth-79-cp312-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:fd2172ecadbe79735c5068e65901d7a37c73488ead54880a305bc7866d2db9b7", size = 5363607, upload-time = "2026-08-07T08:58:39.15Z" },
-    { url = "https://files.pythonhosted.org/packages/bc/e4/e551a29871be0e2f0378232e7f347b944b632fa23a42c056cfec53485f95/vapoursynth-79-cp312-abi3-win_amd64.whl", hash = "sha256:643d9708df7e98807a66d4e8804e2e9a1380af22bea2873387d8af103e69aa5b", size = 15157546, upload-time = "2026-08-07T08:58:41.525Z" },
+    { url = "https://files.pythonhosted.org/packages/04/d7/c87d07e85746747a7ce4669b0d491b9dfea9a9c4f7295f43a4f2c5a5003f/vapoursynth-82-cp312-abi3-macosx_13_0_arm64.whl", hash = "sha256:e6f0854e7de85b42426cb0889066c712455b6f1afde8d7328addfb2320bc3e80", size = 2449211, upload-time = "2026-11-01T20:09:08.606Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/e3/c674421e024e94b8db15aedd22ca66de3370a678829a824ec728c6667774/vapoursynth-82-cp312-abi3-macosx_13_0_x86_64.whl", hash = "sha256:ef4429979f76bb136d61f815055a33e33335ff450d99138cdfbbd38fb76e4823", size = 5921166, upload-time = "2026-11-01T20:09:10.987Z" },
+    { url = "https://files.pythonhosted.org/packages/da/12/4af5770814c756d9ade013bd01dbb0adfd90eb85bc2d53dc23a8e623c7f2/vapoursynth-82-cp312-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d75f13527367e087265dceb0b069fa483b2ce0d8636774bc346904a581734836", size = 3188729, upload-time = "2026-11-01T20:09:12.736Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/30/55b464fe29960af3e8e8254eb236f5e3164c28a6ce66f9706f5d5567ddd4/vapoursynth-82-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9bd85641d3655c06ff90c73042204fbcf6db7bd26f8ae9d60a7ee17acf534f2e", size = 6380348, upload-time = "2026-11-01T20:09:14.533Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/a6/eb5a21ef47c5b820da093922a4245ca3cb1e7610c012c883c58db138fce9/vapoursynth-82-cp312-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:a6031140b6e3248fa4a08a1666d257e1720b8a0bb8b08b27c7ad58cc32a98c3c", size = 4004567, upload-time = "2026-11-01T20:09:16.754Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/1e/7bc8a24fa594418f844d453d5be197572d49c1956ad56ebf8e4859cc42f5/vapoursynth-82-cp312-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:907e5dafb5c472906e289dfb589a86b2526cca5eea9999c0fa4b5968c3436f04", size = 7225691, upload-time = "2026-11-01T20:09:18.577Z" },
+    { url = "https://files.pythonhosted.org/packages/09/d7/f67e68a7bf35dc24bdff34b30d14baee5b726790c0bed8cba449790dbc33/vapoursynth-82-cp312-abi3-win_amd64.whl", hash = "sha256:dbde9930d4e85de4eb220e05a0314edb7469b9016c5c58a279844b90da4a32b1", size = 23728996, upload-time = "2026-11-01T20:09:21.036Z" },
+    { url = "https://files.pythonhosted.org/packages/97/fb/0c606fee0607cd0b30c080be90a4ed9e50add45c06f2476b4718644a3b99/vapoursynth-82-cp315-cp315t-macosx_13_0_arm64.whl", hash = "sha256:81fb394e455b9eac7d7e008126b1cb189f13a6b87696fd238ddfdc71b7feda26", size = 2551703, upload-time = "2026-11-01T20:09:23.786Z" },
+    { url = "https://files.pythonhosted.org/packages/be/4d/b514ef0b18ee3e64d7462c4c192a9b624a59dc8bcf541189bf5790ef5a08/vapoursynth-82-cp315-cp315t-macosx_13_0_x86_64.whl", hash = "sha256:b1e16e2451a7b58ad1a701aefbea8c328350f77efd9fe25248d1deec021afd70", size = 6032745, upload-time = "2026-11-01T20:09:25.524Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/ed/2c56c3eec55e9dbba77b47a9758a0d5fb5824aceba4c016d8568609cbd06/vapoursynth-82-cp315-cp315t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:af169efa09075d4e09330237755b6abe03a60e886b84b663205b9403579abf4e", size = 3257912, upload-time = "2026-11-01T20:09:27.374Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/5f/9216b4d33045ab18b21244b1ec3b0d1c5d8ad2a167bde36ed20dd381be09/vapoursynth-82-cp315-cp315t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1b1f8c234664cf1e05c346c0a5a40eaa73887c9606d70fdcd55d36e3d5787796", size = 6439142, upload-time = "2026-11-01T20:09:29.447Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/56/0b599652ec812044e274a10987b35bf2518cfe1946377bc01d704f800bed/vapoursynth-82-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:7b38370137e6783e7e44a2f6316c043b47462483c985405363970ccb02996eba", size = 4074562, upload-time = "2026-11-01T20:09:31.444Z" },
+    { url = "https://files.pythonhosted.org/packages/40/74/d3ddf683f18b6dd214c7c619fd9c83705d97f4066275729d0297ccefc3ef/vapoursynth-82-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:663b7cc7477d82a88d7a2996d0cd0d96af153e9219d248f0e9b38ff8f76898e3", size = 7284805, upload-time = "2026-11-01T20:09:33.535Z" },
+    { url = "https://files.pythonhosted.org/packages/84/e8/7e5b832c7c6d3cb980e6496bb0ffde0473987258b9034a7282e528822ca9/vapoursynth-82-cp315-cp315t-win_amd64.whl", hash = "sha256:30d969db03beb1a657d70c7b94c70c45aff149fe3ae1ebdf1990a1c0604831bf", size = 25378264, upload-time = "2026-11-01T20:09:36.128Z" },
 ]
 
 [[package]]
@@ -92,7 +99,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "vapoursynth", specifier = ">=74" }]
+requires-dist = [{ name = "vapoursynth", specifier = ">=82" }]
 
 [package.metadata.requires-dev]
 dev = [
