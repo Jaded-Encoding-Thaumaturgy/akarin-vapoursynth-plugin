@@ -112,7 +112,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Build
-        run: nix build -L .#llvm_${{ matrix.llvm }}.dist
+        run: nix build -L ".#llvm_${{ matrix.llvm }}^out,dist"
 
       - name: Repair wheel
         run: |
