@@ -103,6 +103,6 @@ requires-dist = [{ name = "vapoursynth", specifier = ">=74" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "hatchling", specifier = ">=1.27.0" },
+    { name = "hatchling", specifier = ">=1.33.0" },
     { name = "packaging" },
 ]
