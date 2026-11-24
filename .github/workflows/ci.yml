@@ -110,6 +110,7 @@ jobs:
         with:
           name: akarin-vapoursynth-plugin
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          installCommand: nix-env --quiet -j8 -iA cachix -f '<nixpkgs>'
 
       - name: Build
         run: nix build -L ".#llvm_${{ matrix.llvm }}^out,dist"
